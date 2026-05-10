@@ -1,0 +1,70 @@
+# Copy to repo root as lumebridge.yaml or set CONFIG_FILE to this path.
+# Env vars override (see ConfigLoader).
+
+core:
+  port: 8080
+  permits: 10
+  delay_ms: 200
+  lock_ttl_seconds: 30
+
+server:
+  port: 8080
+
+redis:
+  host: localhost
+  port: 6379
+
+postgres:
+  host: localhost
+  port: 5432
+  user: sentinel
+  password: sentinel
+  database: sentinel_nexus
+
+kafka:
+  bootstrap_servers: localhost:19092
+  dlq_topic: sentinel-dlq
+
+plugins:
+  concurrency-gate:
+    enabled: true
+  payload-hasher:
+    enabled: true
+  distributed-lock:
+    enabled: true
+  payload-normalizer:
+    enabled: true
+  version-guard:
+    enabled: true
+  nonce-ordering:
+    enabled: true
+  collision-detection:
+    enabled: true
+    mode: disabled
+  task-persistence:
+    enabled: true
+  circuit-breaker:
+    enabled: false
+    failure_threshold: 5
+    recovery_timeout_ms: 60000
+  smart-retry:
+    enabled: false
+    max_retries: 2
+    base_delay_ms: 50
+    max_delay_ms: 5000
+    jitter_percent: 25
+    # retriable_message_substrings: timeout|connection reset
+  dlq:
+    enabled: false
+    max_record_bytes: 900000
+  # Step 5 (Intelligence)
+  pii-scrubber:
+    enabled: false
+  dual-mode-router:
+    enabled: false
+  semantic-cache:
+    enabled: false
+    similarity_threshold: 0.92
+    embedding_dimensions: 64
+  intent-classifier:
+    enabled: false

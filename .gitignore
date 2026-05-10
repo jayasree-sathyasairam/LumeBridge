@@ -1,0 +1,35 @@
+# ── Maven / Java ────────────────────────────────────────────────
+**/target/
+**/*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+
+# ── Infrastructure / Docker ─────────────────────────────────────
+# Ignore persistent data volumes
+**/postgres-data/
+**/redis-data/
+**/redpanda-data/
+
+# ── Logs & Temporary Files ──────────────────────────────────────
+*.log
+/tmp/
+.DS_Store
+Thumbs.db
+
+# ── IDEs ────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# ── Benchmarks & Reports ────────────────────────────────────────
+# Keep the report templates but ignore the raw results if they are large
+/reports/*.json
+/benchmarks/*.json
+/benchmarks/stress_report.md
+experience-bridge.md
+.env
+lumebridge.yaml
