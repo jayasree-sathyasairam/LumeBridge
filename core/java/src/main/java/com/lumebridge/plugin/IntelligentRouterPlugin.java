@@ -20,20 +20,48 @@ public class IntelligentRouterPlugin implements Plugin {
     @Override
     public MiddlewareFunc middleware() {
         return (ctx, next) -> {
-            String currentRoute = ctx.getMetadata().get(SentinelConstants.META_ROUTE);
-            
-            // Logic: If prompt is very long, use a high-capacity model
-            byte[] raw = ctx.getRawPayload();
-            if (raw != null && raw.length > 5000) {
-                ctx.getMetadata().put(SentinelConstants.META_ROUTE, "gpt-4-turbo");
-            } else if (currentRoute == null) {
-                ctx.getMetadata().put(SentinelConstants.META_ROUTE, "gpt-4o-mini"); // Default cheap model
-            }
+            String primaryRoute = selectPrimaryRoute(ctx);
+            ctx.getMetadata().put(SentinelConstants.META_ROUTE, primaryRoute);
 
-            // Set a fallback route for SmartRetryPlugin to use if primary fails
-            ctx.getMetadata().put("fallback_route", "claude-3-haiku");
-            
+            String fallbackRoute = selectFallbackRoute(primaryRoute);
+            ctx.getMetadata().put("fallback_route", fallbackRoute);
+
             next.run();
         };
+    }
+
+    private String selectPrimaryRoute(com.lumebridge.pipeline.RequestContext ctx) {
+        String currentRoute = ctx.getMetadata().get(SentinelConstants.META_ROUTE);
+        if (isNotEmpty(currentRoute)) {
+            return currentRoute;
+        }
+
+        byte[] raw = ctx.getRawPayload();
+        if (isLargePayload(raw)) {
+            return SentinelConstants.ROUTE_GPT4_TURBO;
+        }
+
+        return SentinelConstants.ROUTE_GPT4O_MINI;
+    }
+
+    private boolean isNotEmpty(String value) {
+        return value != null && !value.isEmpty();
+    }
+
+    private boolean isLargePayload(byte[] raw) {
+        return raw != null && raw.length > SentinelConstants.MAX_PAYLOAD_SIZE;
+    }
+
+    private String selectFallbackRoute(String primaryRoute) {
+        if (SentinelConstants.ROUTE_GPT4_TURBO.equals(primaryRoute)) {
+            return SentinelConstants.ROUTE_GPT4O;
+        }
+        if (SentinelConstants.ROUTE_GPT4O.equals(primaryRoute)) {
+            return SentinelConstants.ROUTE_GPT4O_MINI;
+        }
+        if (SentinelConstants.ROUTE_GPT4O_MINI.equals(primaryRoute)) {
+            return SentinelConstants.ROUTE_CLAUDE_HAIKU;
+        }
+        return SentinelConstants.ROUTE_CLAUDE_HAIKU;
     }
 }

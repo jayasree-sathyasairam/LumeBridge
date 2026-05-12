@@ -31,5 +31,16 @@ Thumbs.db
 /benchmarks/*.json
 /benchmarks/stress_report.md
 experience-bridge.md
+
+# ── Screenshots & Local Documentation ────────────────────────────
+# Ignore screenshots and local quality check documents
+*screenshot*.png
+*screenshot*.jpg
+*screenshot*.jpeg
+*screenshot*.gif
+CODE_QUALITY_STANDARDS.md
+CODE_IMPROVEMENTS.md
+
+# ── Configuration & Secrets ──────────────────────────────────────
 .env
 lumebridge.yaml
