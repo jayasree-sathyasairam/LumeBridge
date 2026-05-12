@@ -2,11 +2,13 @@
 
 This document is the primary reference for the LumeBridge architecture. It combines high-level data flow diagrams (DFD), per-profile sequence diagrams, and database forensic details into a single source of truth.
 
----
-
 ## 1. High-Level Data Flow (Gane-Sarson Style)
 
 This diagram shows how data flows between external entities, core processes, and persistent data stores.
+
+![High-Level Data Flow Diagram](./images/Dataflow.png)
+<details>
+<summary>1. High-Level Data Flow</summary>
 
 ```mermaid
 flowchart TD
@@ -50,15 +52,18 @@ flowchart TD
     style Redis fill:#fff,stroke:#333,stroke-width:2px
     style Postgres fill:#fff,stroke:#333,stroke-width:2px
 ```
-
----
+</details>
 
 ## 2. Profile-Specific Request Lifecycles
 
-Different profiles activate different "stops" along the data highway. 
+Each profile below shows a static diagram preview. Expand the section to view the Mermaid source code if needed.
 
-````carousel
 ### 1. api-minimal (Core API)
+![api-minimal sequence diagram](./images/api-minimal-sequence.png)
+
+<details>
+<summary>api-minimal sequence diagram</summary>
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -79,8 +84,14 @@ sequenceDiagram
     P->>R: Release Lock
     P-->>C: 200 OK
 ```
-<!-- slide -->
+</details>
+
 ### 2. ai-minimal (Core AI)
+![ai-minimal sequence diagram](./images/ai-minimal-sequence.png)
+
+<details>
+<summary>ai-minimal sequence diagram</summary>
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -104,8 +115,14 @@ sequenceDiagram
     P->>R: Release Lock
     P-->>C: 200 OK
 ```
-<!-- slide -->
+</details>
+
 ### 3. api-pro (Production API)
+![api-pro sequence diagram](./images/api-pro-sequence.png)
+
+<details>
+<summary>api-pro sequence diagram</summary>
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -135,8 +152,14 @@ sequenceDiagram
     P->>R: Release Lock
     P-->>C: 200 OK
 ```
-<!-- slide -->
+</details>
+
 ### 4. ai-pro (Production AI)
+![ai-pro sequence diagram](./images/ai-pro-sequence.png)
+
+<details>
+<summary>ai-pro sequence diagram</summary>
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -165,8 +188,14 @@ sequenceDiagram
     P->>R: Release Lock
     P-->>C: 200 OK
 ```
-<!-- slide -->
+</details>
+
 ### 5. hybrid (Full Suite)
+![hybrid sequence diagram](./images/hybrid-sequence.png)
+
+<details>
+<summary>hybrid sequence diagram</summary>
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -195,9 +224,8 @@ sequenceDiagram
     P->>K: DLQ & Telemetry
     P-->>C: 200 OK
 ```
-````
+</details>
 
----
 
 ## 3. Internal Data State (The "Forensic" View)
 
@@ -261,6 +289,11 @@ The `RequestContext` is the primary object passed between plugins. It is mutable
 
 Independent of the request flow, the following processes maintain system health.
 
+![Background Maintenance Operations diagram](./images/background-maintenance-operations.png)
+
+<details>
+<summary>Background Maintenance Operations diagram</summary>
+
 ```mermaid
 flowchart LR
     Cleaner["StaleDataCleaner"] -- "DELETE older than 24h" --> DB[(Postgres)]
@@ -268,3 +301,5 @@ flowchart LR
     Exporter -- "Expose /metrics" --> Prometheus["Prometheus/Grafana"]
     Plugins -- "Record Contention" --> Redis[(Redis)]
 ```
+
+</details>

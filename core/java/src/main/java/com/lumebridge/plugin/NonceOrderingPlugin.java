@@ -32,26 +32,40 @@ public class NonceOrderingPlugin implements Plugin {
     public MiddlewareFunc middleware() {
         return (ctx, next) -> {
             var body = JsonBody.tryParse(ctx.getRawPayload());
-            if (body == null || !body.has(SentinelConstants.JSON_FIELD_NONCE)) {
+            if (!hasNonce(body)) {
                 next.run();
                 return;
             }
             long nonce = body.get(SentinelConstants.JSON_FIELD_NONCE).getAsLong();
             String key = SentinelConstants.REDIS_NONCE_KEY_PREFIX + ctx.getPayloadHash();
             String prev = jedis.get(key);
-            if (prev != null) {
-                long pv = Long.parseLong(prev);
-                if (nonce <= pv) {
-                    ctx.setHttpStatus(SentinelConstants.HTTP_STATUS_CONFLICT);
-                    ctx.setStatus(SentinelConstants.STATUS_NONCE_REJECTED);
-                    ctx.getMetadata().put(SentinelConstants.META_CACHED_NONCE, prev);
-                    ctx.getMetadata().put(SentinelConstants.META_INCOMING_NONCE, String.valueOf(nonce));
-                    return;
-                }
+            if (isNonceOutOfOrder(prev, nonce)) {
+                rejectNonce(ctx, prev, nonce);
+                return;
             }
             jedis.set(key, String.valueOf(nonce), SetParams.setParams().ex(SentinelConstants.NONCE_KEY_TTL_SECONDS));
             next.run();
         };
+    }
+
+    private boolean hasNonce(com.google.gson.JsonElement body) {
+        return body != null && body.isJsonObject()
+               && body.getAsJsonObject().has(SentinelConstants.JSON_FIELD_NONCE);
+    }
+
+    private boolean isNonceOutOfOrder(String prev, long incoming) {
+        if (prev == null || prev.isEmpty()) {
+            return false;
+        }
+        long prevValue = Long.parseLong(prev);
+        return incoming <= prevValue;
+    }
+
+    private void rejectNonce(com.lumebridge.pipeline.RequestContext ctx, String prev, long incoming) {
+        ctx.setHttpStatus(SentinelConstants.HTTP_STATUS_CONFLICT);
+        ctx.setStatus(SentinelConstants.STATUS_NONCE_REJECTED);
+        ctx.getMetadata().put(SentinelConstants.META_CACHED_NONCE, prev);
+        ctx.getMetadata().put(SentinelConstants.META_INCOMING_NONCE, String.valueOf(incoming));
     }
 
     @Override

@@ -23,18 +23,35 @@ public class IntentClassifierPlugin implements Plugin {
     @Override
     public MiddlewareFunc middleware() {
         return (ctx, next) -> {
-            String intent = SentinelConstants.INTENT_CACHE_ELIGIBLE;
-            String eligible = SentinelConstants.VAL_TRUE;
+            String[] intent = { SentinelConstants.INTENT_CACHE_ELIGIBLE, SentinelConstants.VAL_TRUE };
+
             var body = JsonBody.tryParse(ctx.getRawPayload());
-            if (body != null && body.has(SentinelConstants.JSON_FIELD_CACHE_BYPASS)
-                    && !body.get(SentinelConstants.JSON_FIELD_CACHE_BYPASS).isJsonNull()
-                    && body.get(SentinelConstants.JSON_FIELD_CACHE_BYPASS).getAsBoolean()) {
-                intent = SentinelConstants.INTENT_MUST_EXECUTE;
-                eligible = SentinelConstants.VAL_FALSE;
+            if (shouldBypassCache(body)) {
+                intent[0] = SentinelConstants.INTENT_MUST_EXECUTE;
+                intent[1] = SentinelConstants.VAL_FALSE;
             }
-            ctx.getMetadata().put(SentinelConstants.META_INTENT, intent);
-            ctx.getMetadata().put(SentinelConstants.META_INTENT_CACHE_ELIGIBLE, eligible);
+
+            ctx.getMetadata().put(SentinelConstants.META_INTENT, intent[0]);
+            ctx.getMetadata().put(SentinelConstants.META_INTENT_CACHE_ELIGIBLE, intent[1]);
             next.run();
         };
+    }
+
+    private boolean shouldBypassCache(com.google.gson.JsonElement body) {
+        if (!isValidJsonObject(body)) {
+            return false;
+        }
+        var obj = body.getAsJsonObject();
+        return hasBypassFlag(obj);
+    }
+
+    private boolean isValidJsonObject(com.google.gson.JsonElement body) {
+        return body != null && body.isJsonObject();
+    }
+
+    private boolean hasBypassFlag(com.google.gson.JsonObject obj) {
+        return obj.has(SentinelConstants.JSON_FIELD_CACHE_BYPASS)
+                && !obj.get(SentinelConstants.JSON_FIELD_CACHE_BYPASS).isJsonNull()
+                && obj.get(SentinelConstants.JSON_FIELD_CACHE_BYPASS).getAsBoolean();
     }
 }

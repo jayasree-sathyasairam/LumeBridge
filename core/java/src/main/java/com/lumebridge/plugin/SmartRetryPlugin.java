@@ -86,7 +86,11 @@ public class SmartRetryPlugin implements Plugin {
             return false;
         }
         String lower = msg.toLowerCase(Locale.ROOT);
-        return retriableSubstrings.stream().anyMatch(lower::contains);
+        return containsRetriableKeyword(lower);
+    }
+
+    private boolean containsRetriableKeyword(String lowerMsg) {
+        return retriableSubstrings.stream().anyMatch(lowerMsg::contains);
     }
 
     private void sleepWithBackoff(int attemptZeroBased, RequestContext ctx) {

@@ -129,6 +129,15 @@ public final class SentinelConstants {
     public static final String ROUTE_REST = "rest";
     public static final String ROUTE_MCP = "mcp";
 
+    // --- Model Routes (Intelligent Router) ---
+    public static final String ROUTE_GPT4_TURBO = "gpt-4-turbo";
+    public static final String ROUTE_GPT4O = "gpt-4o";
+    public static final String ROUTE_GPT4O_MINI = "gpt-4o-mini";
+    public static final String ROUTE_CLAUDE_HAIKU = "claude-3-haiku";
+
+    // --- Size Limits ---
+    public static final int MAX_PAYLOAD_SIZE = 5000;
+
     public static final String INTENT_CACHE_ELIGIBLE = "cache_eligible";
     public static final String INTENT_MUST_EXECUTE = "must_execute";
 

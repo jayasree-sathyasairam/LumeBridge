@@ -50,7 +50,7 @@ make run PROFILE=ai-pro
 
 ## 🛡️ Benchmarks & Hardening
 The gateway has been stress-tested with **10,000 requests** under high concurrency (50 VUs). Detailed results, including security audit logs (Auth, Safety, Collision, Nonce), can be found in:
-👉 [Gateway Performance Report](reports/gateway_performance_report.md)
+👉 [Gateway Performance Report](reports/lumebridge_performance_report.md)
 
 ## ☸️ Production Deployment (K8s)
 For production environments, LumeBridge is designed to run on **Kubernetes**.
