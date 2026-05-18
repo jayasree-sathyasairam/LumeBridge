@@ -65,7 +65,22 @@ public class LumeBridgeApp {
         HikariDataSource dataSource = null;
         TaskRepository taskRepository = null;
         if (wantsTaskRepo || wantsSemanticCache) {
-            dataSource = Database.createDataSource(config.coreSettings());
+            try {
+                dataSource = Database.createDataSource(config.coreSettings());
+            } catch (com.zaxxer.hikari.pool.HikariPool.PoolInitializationException e) {
+                String jdbc = Database.resolveJdbcUrl(config.coreSettings());
+                System.err.println();
+                System.err.println("PostgreSQL is not reachable: " + jdbc);
+                System.err.println("This profile needs Postgres (task persistence, collision detection, semantic cache, etc.).");
+                System.err.println("From the repo root, start Docker infra first:");
+                System.err.println("  make up");
+                System.err.println("  or: docker compose -p lumebridge -f infra/docker-compose.yml up -d");
+                System.err.println("Then: make verify-infra");
+                System.err.println();
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                System.err.println(cause.getClass().getSimpleName() + ": " + cause.getMessage());
+                System.exit(1);
+            }
             if (wantsTaskRepo) {
                 taskRepository = new TaskRepository(dataSource);
             }

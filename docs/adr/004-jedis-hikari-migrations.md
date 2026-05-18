@@ -46,7 +46,7 @@ The gateway integrates **Redis** (locks, nonces) and **PostgreSQL** (tasks), and
 
 **Rationale:**
 
-- **Docker init:** Fresh volumes already run **`scripts/init-db.sql`** — good for local and CI **from zero**.
+- **Docker init:** Fresh volumes run **`migrations/init-db.sql`** via Compose (`infra/docker-compose.yml`) — good for local and CI **from zero**.
 - **Incremental changes:** Operators (or CI) apply **`V2__....sql`** when upgrading an **existing** database without embedding a migration runner in the JAR yet.
 - **Simplicity:** No Flyway plugin, no classpath `db/migration` packaging, no lock table — faster to iterate while the schema is still moving.
 

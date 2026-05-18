@@ -13,7 +13,7 @@ $COMPOSE exec -T redis redis-cli ping
 
 echo ""
 echo "== Postgres readiness =="
-$COMPOSE exec -T postgres pg_isready -U "${POSTGRES_USER:-sentinel}" -d "${POSTGRES_DB:-sentinel_nexus}"
+$COMPOSE exec -T postgres pg_isready -U "${POSTGRES_USER:-lumebridge}" -d "${POSTGRES_DB:-lumebridge_nexus}"
 
 echo ""
 echo "== Redpanda cluster health =="

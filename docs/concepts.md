@@ -946,6 +946,8 @@ If you see `gate: 5000ms`, you know the semaphore is saturated — increase perm
 
 **Why it matters:** LLMs are non-deterministic. An evaluator checks if the response contradicts the provided context or contains "refusal" language that might indicate a failed task.
 
+**V2 extension — grounding:** Beyond keyword checks, compute a **grounding score** against explicit context documents (overlap, contradiction detection, citation expectations). Low scores can surface as warnings or alternate HTTP semantics so clients and support can act without raw logs.
+
 ---
 
 ## 24. Token Metering & Cost Tracking
@@ -962,6 +964,84 @@ If you see `gate: 5000ms`, you know the semaphore is saturated — increase perm
 
 **Why it matters:** Maximizes quality while minimizing cost. If the primary model provider is down, the gateway automatically switches to a backup provider, ensuring high availability.
 
+**V2 extension — complexity tiers:** Route using **query complexity** and **estimated token count** (e.g. Haiku / Sonnet / Opus-style tiers), not a single static default. Use a **fallback chain** on timeouts (strong model → faster model) so latency spikes degrade gracefully.
+
+---
+
+## 26. Context-Aware Semantic Caching & Cache Poisoning
+
+**What it is:** Semantic retrieval (e.g. pgvector nearest-neighbour) combined with **non-text signals** so “almost the same embedding” does not return an answer that was correct for a *different* situation.
+
+**Why it matters:** Similarity-only caches confuse “today vs yesterday,” tenant A vs B, or adjacent intents — wrong cached answers look authoritative (**cache poisoning**). V2 ties hits to **context hash**, **intent/freshness**, and **TTL policy** so similarity is necessary but not sufficient for a hit.
+
+**Where it plugs in:** ROUTE stage, `semantic-cache` plugin and Postgres storage — see [V2 Technical Roadmap](V2_TECHNICAL_ROADMAP.md).
+
+---
+
+## 27. pgvector ANN & Semantic Cache Storage Discipline
+
+**What it is:** **Approximate nearest neighbour (ANN)** indexes (e.g. HNSW, IVFFlat where supported) over embedding columns so `ORDER BY embedding <=> query LIMIT k` stays bounded as row counts grow.
+
+**Why it matters:** Without index discipline, vector lookups degrade into sequential scans — correct P0 logic still blows p99 latency under load. **Analyze**, dimension choices, and recall/latency tuning are operational requirements, not optional tuning.
+
+---
+
+## 28. Canonical Multi-Format Payloads
+
+**What it is:** A **canonical representation** per logical payload (JSON, XML, Protobuf, form-urlencoded, etc.) so **SHA-256** over the canonical bytes yields the same hash regardless of wire encoding quirks.
+
+**Why it matters:** Dedup, distributed locks, and idempotency keys all key off `payload-hasher`. JSON-only canonicalization silently breaks when clients send equivalent data in other formats.
+
+**Relationship:** Extends **§4 Payload Hashing** — same hash contract, broader normalizers.
+
+---
+
+## 29. Query Intent Classification
+
+**What it is:** Labeling a prompt into buckets such as **real-time**, **temporal**, **static**, **conversation**, or **computation** (patterns or models) to drive **cache eligibility** and **TTL**.
+
+**Why it matters:** Lets the gateway cache aggressively where facts are stable and refuse cache where answers must be fresh or request-specific — aligns with §26.
+
+---
+
+## 30. Conversation Sessions & Token Budgets
+
+**What it is:** A **session** (often Redis-backed with TTL) tracking message history and cumulative **token usage** against a **budget**, optionally summarizing older turns when the budget is exhausted.
+
+**Why it matters:** Stateless gateways cannot prevent runaway costs on long chats; budgets and warnings close the loop with §24 token metering.
+
+---
+
+## 31. Transactional Outbox & Write-Behind
+
+**What it is:** **Write-behind**: respond after enqueueing work instead of waiting on Postgres. **Transactional outbox**: insert the **same business transaction** as domain rows *and* an **outbox row** (or logical equivalent), then a separate process publishes to Redpanda/Kafka and deletes/processes outbox entries — DB and stream stay **consistent** and **replayable**.
+
+**Why it matters:** Fire-and-forget async loses audits under crashes; outbox gives **at-least-once** delivery with idempotent consumers and clear SLAs (immediate vs eventual reads).
+
+---
+
+## 32. Adaptive Concurrency (Gate Tuning)
+
+**What it is:** Dynamically adjusting **concurrency gate** permits (and optionally related quotas) from live signals — e.g. backend **p99**, Redis latency, Hikari pool wait — instead of a fixed ceiling.
+
+**Why it matters:** Fixed permits are either too conservative (waste capacity) or too aggressive (cascade failures). This pattern complements **§2 Semaphore** with feedback control.
+
+---
+
+## 33. Correlation IDs & Support-Grade Observability
+
+**What it is:** A stable **request/correlation ID** propagated from headers through `RequestContext`, logs, DLQ/outbox metadata, and optionally trace spans **per pipeline stage** (`PRE_PROCESS` … `POST_PROCESS`).
+
+**Why it matters:** Engineers already use traces; **support** needs the same spine without JVM access — plus **stable machine-readable error codes** (nonce, collision, quota, safety) for runbooks.
+
+---
+
+## 34. GraalVM Native Image (Optional Packaging)
+
+**What it is:** Ahead-of-time compilation of the gateway to a **native binary** for faster startup and smaller footprint than a traditional JVM.
+
+**Why it matters:** Serverless and aggressive scale-to-zero need **cold start** in milliseconds. Trade-off: reflection/JNI/config for JDBC, Redis clients, and crypto must be explicitly supported — validate early.
+
 ---
 
 ## Concept Map: Where Each Concept Lives
@@ -977,7 +1057,8 @@ If you see `gate: 5000ms`, you know the semaphore is saturated — increase perm
 | Collision-Aware Idempotency | DEDUP | `collision-detection` |
 | Optimistic Locking | DEDUP | `version-guard` |
 | Nonce Ordering | DEDUP | `nonce-ordering` |
-| Semantic Caching | ROUTE | `semantic-cache` |
+| Semantic caching (inc. context-aware / anti–cache-poisoning V2) | ROUTE | `semantic-cache` |
+| pgvector ANN / vector index discipline | ROUTE / Postgres | DB migrations + `semantic-cache` |
 | Circuit Breaker | EXECUTE | `circuit-breaker` |
 | Exponential Backoff + Jitter | EXECUTE | `smart-retry` |
 | Layered Error Classification | EXECUTE | `smart-retry` |
@@ -990,7 +1071,15 @@ If you see `gate: 5000ms`, you know the semaphore is saturated — increase perm
 | Safety Guardrails | PRE_PROCESS | `safety-guardrails` |
 | Response Evaluation | POST_PROCESS | `response-evaluator` |
 | Token Metering | POST_PROCESS | `token-meter` |
-| Intelligent Routing | ROUTE | `intelligent-router` |
+| Intelligent Routing (inc. complexity tiers V2) | ROUTE | `intelligent-router` |
+| Canonical multi-format payloads | PRE_PROCESS / DEDUP | `payload-normalizer`, `payload-hasher` |
+| Query intent classification | ROUTE | intent classifier plugin (V2) |
+| Conversation session & token budget | ROUTE / Redis | conversation session (V2) |
+| Grounding score | POST_PROCESS | `response-evaluator` (V2) |
+| Transactional outbox / write-behind | POST_PROCESS / worker | persistence pipeline (V2) |
+| Adaptive gate tuning | PRE_PROCESS | `concurrency-gate` (V2 behaviour) |
+| Correlation ID & support telemetry | All stages | core + `telemetry` / logging (V2) |
+| GraalVM Native Image | Build / runtime | packaging profile (V2) |
 | Middleware Pipeline | All stages | Core Pipeline Engine |
 | Plugin Architecture | Framework | Core architecture pattern |
 
@@ -998,6 +1087,7 @@ If you see `gate: 5000ms`, you know the semaphore is saturated — increase perm
 
 ## Cross-References
 
+- [V2 Technical Roadmap](V2_TECHNICAL_ROADMAP.md) — Priorities, feature specs, execution timeline
 - [Architecture Decision](architecture-decision.md) — Why plugin architecture over monolith/microservice
 - [Task List](task-list.md) — Step-by-step implementation plan
 - [Experience Bridge](experience-bridge.md) — Deep dives with code examples mapping to iPaaS/Channels

@@ -229,9 +229,10 @@ public final class SentinelConstants {
     public static final int NONCE_KEY_TTL_SECONDS = 86_400;
 
     public static final String DEFAULT_POSTGRES_HOST = "localhost";
-    public static final String DEFAULT_POSTGRES_DB = "sentinel_nexus";
-    public static final String DEFAULT_POSTGRES_USER = "sentinel";
-    public static final String DEFAULT_POSTGRES_PASSWORD = "sentinel";
+    /** Matches default `infra/docker-compose.yml` when no YAML/env overrides. */
+    public static final String DEFAULT_POSTGRES_DB = "lumebridge_nexus";
+    public static final String DEFAULT_POSTGRES_USER = "lumebridge";
+    public static final String DEFAULT_POSTGRES_PASSWORD = "lumebridge";
     public static final String DEFAULT_POSTGRES_PORT = "5432";
 
     public static final String JDBC_PREFIX = "jdbc:postgresql://";
