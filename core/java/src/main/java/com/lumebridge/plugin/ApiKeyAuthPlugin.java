@@ -13,8 +13,6 @@ import java.util.Map;
  */
 public class ApiKeyAuthPlugin implements Plugin {
 
-    private static final String HEADER_API_KEY = "X-API-Key";
-
     @Override public String name() { return SentinelConstants.PLUGIN_API_KEY_AUTH; }
     @Override public Stage stage() { return Stage.PRE_PROCESS; }
     @Override public int order() { return 0; } // First plugin in the pipeline
@@ -22,7 +20,7 @@ public class ApiKeyAuthPlugin implements Plugin {
     @Override
     public MiddlewareFunc middleware() {
         return (ctx, next) -> {
-            String apiKey = ctx.getRequestHeader(HEADER_API_KEY);
+            String apiKey = ctx.getRequestHeader(SentinelConstants.HEADER_API_KEY);
             
             if (apiKey == null || apiKey.isBlank()) {
                 fail(ctx, "Missing API Key");

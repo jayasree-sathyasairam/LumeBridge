@@ -28,9 +28,16 @@ Thumbs.db
 # ── Benchmarks & Reports ────────────────────────────────────────
 # Keep the report templates but ignore the raw results if they are large
 /reports/*.json
+/reports/k6_stress_audit_snapshot.md
+# Written by scripts/bench-runner.sh (Version 1 k6 summary table); regenerate locally.
 /benchmarks/*.json
 /benchmarks/stress_report.md
 experience-bridge.md
+
+# ── Cursor / local prompts ────────────────────────────────────────
+.cursor/rules/
+prompt.md
+**/prompt.md
 
 # ── Screenshots & Local Documentation ────────────────────────────
 # Ignore screenshots and local quality check documents
@@ -38,7 +45,6 @@ experience-bridge.md
 *screenshot*.jpg
 *screenshot*.jpeg
 *screenshot*.gif
-CODE_QUALITY_STANDARDS.md
 CODE_IMPROVEMENTS.md
 
 # ── Configuration & Secrets ──────────────────────────────────────

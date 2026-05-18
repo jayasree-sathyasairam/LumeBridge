@@ -337,8 +337,9 @@ PROFILE=hybrid make run
 | `make bench-step5` | k6 load test — Step 5 intelligence payloads (`benchmarks/k6/step5_intelligence.js`) |
 | `make bench` | Runs **`bench-gate`** then **`bench-lock`** (not **`bench-step5`**) |
 | `make stress-test` | **`scripts/bench-runner.sh`** — **`api-pro`** then **`ai-pro`**, 10k k6 iterations each; needs **Bash**, **k6**, **Python** (**`python3`**, **`python`**, or Windows **`py -3`**), **make** |
-| `make stress-test-k6-api` | k6-only stress (`TEST_TYPE=API`). Start gateway first: **`make run PROFILE=api-pro`** |
-| `make stress-test-k6-ai` | k6-only stress (`TEST_TYPE=AI`). Start gateway first: **`make run PROFILE=ai-pro`** |
+| `make stress-test-k6-api` | k6-only stress (`TEST_TYPE=API`). Uses committed **`benchmarks/k6/fixtures/scenarios.json`** — **no Node**. Start gateway first: **`make run PROFILE=api-pro`** |
+| `make stress-test-k6-ai` | k6-only stress (`TEST_TYPE=AI`). Same fixtures — **no Node**. Start gateway first: **`make run PROFILE=ai-pro`** |
+| `make stress-k6-regenerate-fixtures` | Optional — rebuild **`scenarios.json`** from **`scripts/generate-scenarios.mjs`** (needs **Node**). Run **`node …`** from a shell if **`make`** cannot find **`node`** on Windows. |
 
 ### Benchmarks (k6)
 
@@ -350,7 +351,7 @@ Targets **`make bench`**, **`bench-gate`**, **`bench-lock`**, **`bench-step5`**,
 make stress-test BASH="C:/Program Files/Git/bin/bash.exe"
 ```
 
-The script resolves the repo root, writes temp files under **`TMPDIR` / `TEMP` / `/tmp`**, exports **`CONFIG_FILE`**, runs **`PROFILE=… make run`** in the background, runs k6, and appends rows using embedded **Python** on **`--summary-export`** JSON (**`rate`**, **`p(95)`**, **`count` / `fails` / `passes`**). Output: **`reports/security_audit_report.md`**. On **Git Bash** + **Windows Python (`py -3`)**, the summary path is passed through **`cygpath -w`** so Python opens the real file (otherwise the table can show **0.00%** / zeros).
+The script resolves the repo root, writes temp files under **`TMPDIR` / `TEMP` / `/tmp`**, exports **`CONFIG_FILE`**, runs **`PROFILE=… make run`** in the background, runs k6, and appends rows using embedded **Python** on **`--summary-export`** JSON (**`rate`**, **`p(95)`**, **`count` / `fails` / `passes`**). Output: **`reports/k6_stress_audit_snapshot.md`** (metrics table). Narrative context: **`reports/lumebridge_audit_and_performance_report.md`**. On **Git Bash** + **Windows Python (`py -3`)**, the summary path is passed through **`cygpath -w`** so Python opens the real file (otherwise the table can show **0.00%** / zeros).
 
 Alternatively open **Git Bash** and run **`bash scripts/bench-runner.sh`** manually. Use **`make stress-test-k6-*`** if you only need k6 with the gateway already running.
 

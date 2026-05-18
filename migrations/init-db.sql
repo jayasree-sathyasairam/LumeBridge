@@ -17,10 +17,18 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE INDEX IF NOT EXISTS idx_tasks_payload_hash ON tasks (payload_hash);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks (status);
 
--- Step 5: semantic cache (pgvector cosine search)
+-- V2 P0: semantic cache — scoped rows + ANN index (pgvector HNSW cosine)
 CREATE TABLE IF NOT EXISTS semantic_cache_entries (
-    cache_key         TEXT PRIMARY KEY,
+    scope             TEXT NOT NULL,
+    cache_key         TEXT NOT NULL,
     embedding         vector(64) NOT NULL,
     cached_response   JSONB NOT NULL,
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    expires_at        TIMESTAMPTZ NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (scope, cache_key)
 );
+
+CREATE INDEX IF NOT EXISTS idx_semantic_scope ON semantic_cache_entries (scope);
+
+CREATE INDEX IF NOT EXISTS idx_semantic_hnsw
+    ON semantic_cache_entries USING hnsw (embedding vector_cosine_ops);
