@@ -168,7 +168,14 @@ docker run hello-world
 
 ## Part 2: Quick Start
 
-Do this from the **repository root** (`LumeBridge/`).
+From the **repository root** (`LumeBridge/`): copy `lumebridge.yaml` (step 0), start infra, run tests, then pick a profile.
+
+```bash
+make up
+make verify-infra
+make test
+PROFILE=api-pro make run    # or PROFILE=ai-pro / PROFILE=hybrid
+```
 
 ### 0. Copy configuration (macOS, Linux, Git Bash, PowerShell)
 
