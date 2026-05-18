@@ -46,6 +46,23 @@ public class ConfigLoader {
         return loader;
     }
 
+    /**
+     * Like {@link #fromPath(Path)}, but resolves deployment profile from YAML {@code core.profile} only
+     * (ignores {@code PROFILE} env). Use in unit tests when the JVM inherits {@code PROFILE} from CI.
+     */
+    public static ConfigLoader fromPathForTests(Path path) {
+        ConfigLoader loader = new ConfigLoader();
+        if (Files.exists(path)) {
+            loader.loadYaml(path);
+            System.out.println("Config loaded from: " + path.toAbsolutePath());
+        } else {
+            System.out.println("No config file found at " + path + ", using defaults + env vars");
+        }
+        loader.applyEnvOverrides();
+        loader.applyProfileFromYamlOnly();
+        return loader;
+    }
+
     @SuppressWarnings("unchecked")
     private void loadYaml(Path path) {
         try (InputStream in = new FileInputStream(path.toFile())) {
@@ -139,6 +156,14 @@ public class ConfigLoader {
 
     private void applyProfile() {
         String profile = env("PROFILE", core.getOrDefault(SentinelConstants.CORE_KEY_PROFILE, ""));
+        activateProfile(profile);
+    }
+
+    private void applyProfileFromYamlOnly() {
+        activateProfile(core.getOrDefault(SentinelConstants.CORE_KEY_PROFILE, ""));
+    }
+
+    private void activateProfile(String profile) {
         if (profile.isEmpty()) return;
 
         System.out.println("Applying profile: " + profile);
@@ -171,45 +196,25 @@ public class ConfigLoader {
                 enablePlugin(SentinelConstants.PLUGIN_METRICS_EXPORTER);
                 enablePlugin(SentinelConstants.PLUGIN_TELEMETRY);
             }
-            case SentinelConstants.PROFILE_API_MINIMAL -> {
-                enablePlugin(SentinelConstants.PLUGIN_API_KEY_AUTH);
-                enablePlugin(SentinelConstants.PLUGIN_CONCURRENCY_GATE);
-                enablePlugin(SentinelConstants.PLUGIN_PAYLOAD_HASHER);
-                enablePlugin(SentinelConstants.PLUGIN_DISTRIBUTED_LOCK);
-                enablePlugin(SentinelConstants.PLUGIN_TASK_PERSISTENCE);
-                enablePlugin(SentinelConstants.PLUGIN_DUAL_MODE_ROUTER);
-            }
+            case SentinelConstants.PROFILE_API_MINIMAL -> enableApiMinimalBundle();
             case SentinelConstants.PROFILE_AI_MINIMAL -> {
-                enablePlugin(SentinelConstants.PROFILE_API_MINIMAL); // Inheritance
+                enableApiMinimalBundle();
                 enablePlugin(SentinelConstants.PLUGIN_INTELLIGENT_ROUTER);
             }
             case SentinelConstants.PROFILE_API_PRO -> {
-                enablePlugin(SentinelConstants.PROFILE_API_MINIMAL);
-                enablePlugin(SentinelConstants.PLUGIN_CLIENT_QUOTA);
-                enablePlugin(SentinelConstants.PLUGIN_PAYLOAD_NORMALIZER);
-                enablePlugin(SentinelConstants.PLUGIN_NONCE_ORDERING);
-                enablePlugin(SentinelConstants.PLUGIN_COLLISION_DETECTION);
-                enablePlugin(SentinelConstants.PLUGIN_SMART_RETRY);
-                enablePlugin(SentinelConstants.PLUGIN_CIRCUIT_BREAKER);
-                enablePlugin(SentinelConstants.PLUGIN_METRICS_EXPORTER);
-                enablePlugin(SentinelConstants.PLUGIN_STALE_DATA_CLEANER);
-                enablePlugin(SentinelConstants.PLUGIN_LOCK_METRICS);
+                enableApiMinimalBundle();
+                enableApiProExtras();
             }
             case SentinelConstants.PROFILE_AI_PRO -> {
-                enablePlugin(SentinelConstants.PROFILE_AI_MINIMAL);
-                enablePlugin(SentinelConstants.PLUGIN_INTENT_CLASSIFIER);
-                enablePlugin(SentinelConstants.PLUGIN_SEMANTIC_CACHE);
-                enablePlugin(SentinelConstants.PLUGIN_SAFETY_GUARDRAILS);
-                enablePlugin(SentinelConstants.PLUGIN_PII_SCRUBBER);
-                enablePlugin(SentinelConstants.PLUGIN_RESPONSE_EVALUATOR);
-                enablePlugin(SentinelConstants.PLUGIN_TOKEN_METER);
-                // Also add reliability from Pro
-                enablePlugin(SentinelConstants.PLUGIN_SMART_RETRY);
-                enablePlugin(SentinelConstants.PLUGIN_CIRCUIT_BREAKER);
+                enableApiMinimalBundle();
+                enablePlugin(SentinelConstants.PLUGIN_INTELLIGENT_ROUTER);
+                enableAiProExtras();
             }
             case SentinelConstants.PROFILE_HYBRID -> {
-                enablePlugin(SentinelConstants.PROFILE_API_PRO);
-                enablePlugin(SentinelConstants.PROFILE_AI_PRO);
+                enableApiMinimalBundle();
+                enableApiProExtras();
+                enablePlugin(SentinelConstants.PLUGIN_INTELLIGENT_ROUTER);
+                enableAiProExtras();
                 enablePlugin(SentinelConstants.PLUGIN_DLQ);
                 enablePlugin(SentinelConstants.PLUGIN_TELEMETRY);
             }
@@ -217,9 +222,45 @@ public class ConfigLoader {
         }
     }
 
+    /** Shared API gateway baseline (auth, gate, hashing, lock, persistence, routing). */
+    private void enableApiMinimalBundle() {
+        enablePlugin(SentinelConstants.PLUGIN_API_KEY_AUTH);
+        enablePlugin(SentinelConstants.PLUGIN_CONCURRENCY_GATE);
+        enablePlugin(SentinelConstants.PLUGIN_PAYLOAD_HASHER);
+        enablePlugin(SentinelConstants.PLUGIN_DISTRIBUTED_LOCK);
+        enablePlugin(SentinelConstants.PLUGIN_TASK_PERSISTENCE);
+        enablePlugin(SentinelConstants.PLUGIN_DUAL_MODE_ROUTER);
+    }
+
+    /** Extends {@link #enableApiMinimalBundle()} with resilience / observability typical of {@code api-pro}. */
+    private void enableApiProExtras() {
+        enablePlugin(SentinelConstants.PLUGIN_CLIENT_QUOTA);
+        enablePlugin(SentinelConstants.PLUGIN_PAYLOAD_NORMALIZER);
+        enablePlugin(SentinelConstants.PLUGIN_NONCE_ORDERING);
+        enablePlugin(SentinelConstants.PLUGIN_COLLISION_DETECTION);
+        enablePlugin(SentinelConstants.PLUGIN_SMART_RETRY);
+        enablePlugin(SentinelConstants.PLUGIN_CIRCUIT_BREAKER);
+        enablePlugin(SentinelConstants.PLUGIN_METRICS_EXPORTER);
+        enablePlugin(SentinelConstants.PLUGIN_STALE_DATA_CLEANER);
+        enablePlugin(SentinelConstants.PLUGIN_LOCK_METRICS);
+    }
+
+    /** Intelligence stack on top of {@code ai-minimal} (router already enabled by caller). */
+    private void enableAiProExtras() {
+        enablePlugin(SentinelConstants.PLUGIN_INTENT_CLASSIFIER);
+        enablePlugin(SentinelConstants.PLUGIN_SEMANTIC_CACHE);
+        enablePlugin(SentinelConstants.PLUGIN_SAFETY_GUARDRAILS);
+        enablePlugin(SentinelConstants.PLUGIN_PII_SCRUBBER);
+        enablePlugin(SentinelConstants.PLUGIN_RESPONSE_EVALUATOR);
+        enablePlugin(SentinelConstants.PLUGIN_TOKEN_METER);
+        enablePlugin(SentinelConstants.PLUGIN_SMART_RETRY);
+        enablePlugin(SentinelConstants.PLUGIN_CIRCUIT_BREAKER);
+    }
+
+    /** Turns a plugin on. Profile-driven enables overwrite YAML {@code enabled: false} so bundles stay coherent. */
     private void enablePlugin(String name) {
         plugins.computeIfAbsent(name, k -> new LinkedHashMap<>())
-               .putIfAbsent(SentinelConstants.CFG_KEY_ENABLED, SentinelConstants.VAL_TRUE);
+               .put(SentinelConstants.CFG_KEY_ENABLED, SentinelConstants.VAL_TRUE);
     }
 
     public Map<String, String> coreSettings() {

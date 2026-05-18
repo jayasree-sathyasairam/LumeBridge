@@ -1,8 +1,9 @@
-package com.lumebridge.plugin;
+package com.sentinel.plugin;
 
 import com.lumebridge.SentinelConstants;
 import com.lumebridge.db.SemanticCacheRepository;
 import com.lumebridge.pipeline.RequestContext;
+import com.lumebridge.plugin.SemanticCachePlugin;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,11 +28,13 @@ class SemanticCachePluginTest {
 
     @Test
     void populatesMetadataOnHit() throws Exception {
-        when(repository.findClosest(any(), anyDouble()))
+        when(repository.embeddingDimensions()).thenReturn(64);
+        when(repository.findClosest(any(), anyDouble(), anyString()))
                 .thenReturn(Optional.of(new SemanticCacheRepository.CacheHit("k1", "{\"cached\":true}", 0.99)));
         SemanticCachePlugin p = new SemanticCachePlugin(repository);
         p.init(Map.of());
-        RequestContext ctx = new RequestContext("any".getBytes());
+        RequestContext ctx = new RequestContext("{\"prompt\":\"hello\",\"nonce\":1}".getBytes());
+        ctx.putRequestHeader(SentinelConstants.HEADER_API_KEY, "sk-sentinel-u1");
         p.middleware().apply(ctx, () -> { });
         assertEquals(SentinelConstants.VAL_TRUE, ctx.getMetadata().get(SentinelConstants.META_SEMANTIC_CACHE_HIT));
         assertTrue(ctx.getMetadata().containsKey(SentinelConstants.META_SEMANTIC_CACHE_SIMILARITY));

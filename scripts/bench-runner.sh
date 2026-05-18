@@ -54,7 +54,7 @@ GW_LOG="$LB_TMP/gateway.log"
 K6_JSON="$LB_TMP/k6_res.json"
 
 PROFILES=(api-pro ai-pro)
-REPORT_FILE="$REPO_ROOT/reports/security_audit_report.md"
+REPORT_FILE="$REPO_ROOT/reports/k6_stress_audit_snapshot.md"
 mkdir -p "$REPO_ROOT/reports"
 
 {

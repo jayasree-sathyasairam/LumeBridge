@@ -243,6 +243,7 @@ The gateway runs on port 8080. Dashed lines indicate connections used only when 
 
 - [ADR-003: Modular Monolith](docs/adr/003-why-modular-monolith.md)
 - [ADR-005: Model Routing Strategy](docs/adr/005-model-routing-strategy.md)
+- [ADR-006: Multi-Format Payload Canonicalization](adr/006-multi-format-payload-canonicalization.md) — MessagePack & Protobuf hashing
 - [lld.md](lld.md) -- Detailed plugin internal logic
 - [concepts.md](concepts.md) -- Every pattern/concept used in the project and why it matters
 - [api-spec.md](api-spec.md) -- REST API and MCP/JSON-RPC endpoint specifications

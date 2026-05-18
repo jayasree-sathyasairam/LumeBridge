@@ -83,6 +83,14 @@ public final class SentinelConstants {
     public static final String CFG_KEY_MAX_RECORD_BYTES = "max_record_bytes";
     public static final String CFG_KEY_MODE = "mode";
 
+    /** Path to a protobuf {@code FileDescriptorSet} ({@code protoc --descriptor_set_out}) for canonical hashing of protobuf bodies. */
+    public static final String CFG_KEY_PAYLOAD_PROTOBUF_DESCRIPTOR_PATH = "protobuf_descriptor_path";
+    /** Header name carrying fully-qualified protobuf message type (e.g. {@code mypkg.MyRequest}). Default {@link #HEADER_PROTOBUF_MESSAGE}. */
+    public static final String CFG_KEY_PAYLOAD_PROTOBUF_MESSAGE_HEADER = "protobuf_message_header";
+
+    /** Used with {@link #CFG_KEY_PAYLOAD_PROTOBUF_MESSAGE_HEADER}; identifies which message type to parse when Content-Type is protobuf. */
+    public static final String HEADER_PROTOBUF_MESSAGE = "X-Protobuf-Message";
+
     // --- Request metadata keys ---
     public static final String META_DLQ_SKIP = "dlq_skip";
     public static final String META_DLQ = "dlq";
@@ -125,6 +133,8 @@ public final class SentinelConstants {
 
     public static final String HEADER_MCP_PROTOCOL_VERSION = "MCP-Protocol-Version";
     public static final String HEADER_CONTENT_TYPE = "Content-Type";
+    /** Client API key (same header {@link com.lumebridge.plugin.ApiKeyAuthPlugin} validates). */
+    public static final String HEADER_API_KEY = "X-API-Key";
 
     public static final String ROUTE_REST = "rest";
     public static final String ROUTE_MCP = "mcp";

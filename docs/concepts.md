@@ -1093,3 +1093,4 @@ If you see `gate: 5000ms`, you know the semaphore is saturated — increase perm
 - [Experience Bridge](experience-bridge.md) — Deep dives with code examples mapping to iPaaS/Channels
 - [ADR-001: Why Redis for Locks](adr/001-why-redis-for-locks.md) — SETNX + Lua decision
 - [ADR-002: Why Java Virtual Threads](adr/002-why-java-virtual-threads.md) — Language choice
+- [ADR-006: Multi-Format Payload Canonicalization](adr/006-multi-format-payload-canonicalization.md) — MessagePack & Protobuf stable hashing
