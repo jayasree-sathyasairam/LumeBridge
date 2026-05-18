@@ -13,6 +13,7 @@ public final class JsonBody {
         if (raw == null || raw.length == 0) {
             return null;
         }
+        raw = PayloadUnwrap.unwrapUserInputEnvelope(raw);
         try {
             var el = JsonParser.parseString(new String(raw, StandardCharsets.UTF_8));
             return el.isJsonObject() ? el.getAsJsonObject() : null;

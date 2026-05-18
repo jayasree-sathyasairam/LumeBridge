@@ -1,355 +1,147 @@
-# 🚀 LumeBridge V2: Start Here
+# LumeBridge V2: Start Here
 
-**Quick start guide for infrastructure setup, baseline testing, and V2 implementation**
+Quick path through **infrastructure**, **baseline checks**, **k6 fixture stress**, and the **canonical V2 roadmap**.
 
 ---
 
-## Your Current Task: Foundation Phase (THIS WEEK)
+## Your roadmap snapshot
 
-You are here: **Getting infrastructure running & establishing baseline metrics**
+You may be in **Phase 0** (infra + baselines) or already validating **landed P0 work** (semantic cache scoping, multi-format normalization—see codebase + **`reports/version2_performance.md`**).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Phase 0: Infrastructure Setup (NOW)                        │
-│  ├─ Install tools ✓                                          │
-│  ├─ Build application → make build                           │
-│  ├─ Start services → make up                                 │
-│  ├─ Verify health → make verify-infra                       │
-│  ├─ Run tests → make test                                    │
-│  ├─ Test profiles → api-pro, ai-pro, hybrid                 │
-│  └─ Get benchmarks → make bench                             │
+│  Phase 0: Infrastructure & baselines (start here)            │
+│  ├─ Build → make build                                       │
+│  ├─ Services → make up                                       │
+│  ├─ Health → make verify-infra                               │
+│  ├─ Tests → make test                                        │
+│  ├─ Profiles → api-pro, ai-pro, hybrid                       │
+│  └─ Benchmarks → make bench / optional k6 (below)           │
 │                                                              │
-│  Phase 1: V2 Bug Fixes (Next 2 weeks)                        │
-│  ├─ Context-aware semantic cache (P0)                       │
-│  └─ Multi-format normalization (P0)                         │
+│  P0 foundations (in repo—validate & extend)                   │
+│  ├─ Tenant + freshness–scoped semantic cache (Postgres/pgvector) │
+│  ├─ Multi-format payload normalization (JSON, XML, YAML,      │
+│  │   form-urlencoded, MsgPack, Protobuf*, opaque binary)    │
+│  └─ *Protobuf canonical path requires descriptor + message hdr │
 │                                                              │
-│  Phase 2: V2 Features (Weeks 3-5)                           │
-│  ├─ Intent classification (P1)                              │
-│  ├─ Intelligent routing → 30-40% cost savings              │
-│  ├─ Conversation state (P1)                                 │
-│  └─ Hallucination grounding (P1)                            │
-│                                                              │
-│  Phase 3: Optimization (Weeks 6-8)                          │
-│  ├─ Async writes → -5-10ms latency                         │
-│  ├─ Adaptive rate limiting (P2)                             │
-│  ├─ Dashboard (P2)                                          │
-│  └─ GraalVM native → 40x cold start improvement            │
+│  P1–P2 (planned detail → docs/V2_TECHNICAL_ROADMAP.md)       │
+│  └─ Intent/routing, conversation quality, async writes, etc. │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+\* Illustrative timelines in **`docs/V2_TECHNICAL_ROADMAP.md`** take precedence over this ASCII sketch.
+
 ---
 
-## 📋 WHAT TO DO NOW: 30-Minute Quick Start
+## 30-minute quick start
 
-### Step 1: Build the Application (30 seconds)
+### 1. Build
 
 ```bash
 make build
 ```
 
-**Expected**: `BUILD SUCCESS`
+Expect Maven **`BUILD SUCCESS`**.
 
-### Step 2: Start Infrastructure (2 minutes)
+### 2. Start infra
 
 ```bash
 make up
 ```
 
-**Expected**: 3 containers running (PostgreSQL, Redis, Redpanda)
+Expect Postgres, Redis, Redpanda (see Compose).
 
-### Step 3: Verify Everything Works (1 minute)
+### 3. Verify
 
 ```bash
 make verify-infra
 ```
 
-**Expected**: All green ✅
-
-### Step 4: Run Tests (20 seconds)
+### 4. Tests
 
 ```bash
 make test
 ```
 
-**Expected**: `Tests run: 73, Failures: 0, Errors: 0`
+Expect **all tests passing** (exact count changes over time).
 
-### Step 5: Test All Profiles (10 minutes)
+### 5. Profiles
 
-**Profile 1: api-pro** (API Gateway)
+Smoke **`api-pro`**, **`ai-pro`**, and **`hybrid`** with `PROFILE=… make run` and a POST to **`http://localhost:8080/task`** with a valid **`X-API-Key`** (e.g. `sk-sentinel-…`). Use **`docs/operations-guide.md`** for fuller commands.
 
-Terminal 1:
-```bash
-PROFILE=api-pro make run
-```
+### 6. Performance signals
 
-Terminal 2 (test):
-```bash
-# Windows (PowerShell)
-$headers = @{"X-API-Key" = "sk-sentinel-user123"; "Content-Type" = "application/json"}
-Invoke-WebRequest -Uri "http://localhost:8080/task" -Method POST -Headers $headers -Body '{"prompt":"Hello","nonce":1}'
+- **`make bench`** — targeted gateway benchmarks (see Makefile).
+- **Fixture k6 (Version 2 harness)** — requires [k6](https://grafana.com/docs/k6/) installed:
+  1. Terminal A: `make run PROFILE=ai-pro` (or `api-pro`).
+  2. Terminal B: `make stress-test-k6-ai` or **`make stress-test-k6-api`**.
 
-# Mac (Bash)
-curl -X POST http://localhost:8080/task \
-  -H "X-API-Key: sk-sentinel-user123" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"Hello","nonce":1}'
-```
+See **`benchmarks/k6/README.md`** (`TARGET_URL`, `TEST_TYPE`, optional **`K6_P95_MS`**). Aggregate narrative + recorded AI/API runs: **`reports/version2_performance.md`**.
 
-**Expected**: `"status":"success"` ✓
-
-Stop with `Ctrl+C`, then test Profile 2:
-
-**Profile 2: ai-pro** (AI Gateway with intelligent routing)
-
-Terminal 1:
-```bash
-PROFILE=ai-pro make run
-```
-
-Terminal 2: Test simple query (should route to Haiku):
-```bash
-# See Step 5 above, use prompt: "List 5 fruits"
-```
-
-Terminal 3: Test complex query (should route to Opus):
-```bash
-# Same as above, use prompt: "Design a distributed system for X"
-```
-
-**Expected**: Smart routing working ✓
-
-Stop with `Ctrl+C`, then test Profile 3:
-
-**Profile 3: hybrid** (Full gateway, all 25+ plugins)
-
-Terminal 1:
-```bash
-PROFILE=hybrid make run
-```
-
-Terminal 2: Test with PII:
-```bash
-# Same curl/PowerShell as above
-# Prompt: "My email is test@example.com, what is AI?"
-```
-
-**Expected**: PII scrubbed, all plugins active ✓
-
-### Step 6: Get Baseline Performance (5 minutes)
-
-Terminal 1: Run gateway
-```bash
-PROFILE=api-pro make run
-```
-
-Terminal 2: Run benchmarks
-```bash
-make bench
-```
-
-**Record these values** (you'll compare against after V2):
-- Requests/sec
-- Avg latency
-- Cache hit rate
-- Lock contention
+**Version 1** dual-profile automation (**`scripts/bench-runner.sh`**) writes **`reports/k6_stress_audit_snapshot.md`** locally (gitignored); narrative: **`reports/lumebridge_audit_and_performance_report.md`**.
 
 ---
 
-## 📊 What You'll See: Expected Results
+## Documentation order
 
-After completing the 30-minute setup:
+| Order | Doc | Purpose |
+|-------|-----|---------|
+| 1 | **`docs/INFRASTRUCTURE_SETUP.md`** | Stack setup and verification |
+| 2 | **`docs/V2_TECHNICAL_ROADMAP.md`** | Canonical priorities (P0→P2), specs, week plan |
+| 3 | **`docs/operations-guide.md`** | Run, profiles, stress, ops |
+| 4 | **`reports/version2_performance.md`** | Fixture k6 outcomes / thresholds notes |
 
-```
-✅ Infrastructure
-   PostgreSQL: healthy
-   Redis: healthy
-   Redpanda: healthy
-
-✅ Application
-   Build: 25 seconds
-   Tests: 73 passed in 15 seconds
-   
-✅ Profiles Working
-   api-pro: Responding in 50-80ms
-   ai-pro: Routing queries correctly
-   hybrid: All 25+ plugins active
-   
-✅ Baseline Metrics (save these!)
-   Cache hit rate: 20%
-   Avg response: 75ms
-   Max throughput: 1000 req/s
-   Lock contention: 12%
-```
+Also: **`docs/adr/`** (e.g. multi-format canonicalization), root **`README.md`** for project overview.
 
 ---
 
-## 🎯 V2 Implementation: What's Next
+## P0 at a glance (what “done” looks like in code)
 
-After infrastructure is verified, you'll implement:
+| Area | Summary |
+|------|---------|
+| **Semantic cache** | Lookups scoped by API-key fingerprint + coarse freshness bucket; Postgres **`semantic_cache_entries`** with optional **`expires_at`**, HNSW-friendly **`scope`** partitioning—see **`SemanticCachePlugin`**, **`SemanticCacheContextBuilder`**, **`SemanticCacheRepository`**. |
+| **Multi-format** | **`payload-normalizer`** → **`MultiFormatPayloadNormalizerEngine`**: JSON, XML, YAML, **`application/x-www-form-urlencoded`**, MsgPack, Protobuf (full canonicalization when configured), **`application/octet-stream`** opaque passthrough with warnings. |
 
-### P0: Critical Bug Fixes (Weeks 1-2)
-| Feature | Benefit |
-|---------|---------|
-| **Context-aware semantic cache** | Eliminate cache poisoning, ↑ hit rate from 20% → 60% |
-| **Multi-format normalization** | Support XML, Protobuf, JSON (not just JSON) |
-
-### P1: Cost Reduction & Quality (Weeks 3-5)
-| Feature | Benefit |
-|---------|---------|
-| **Intent Classification** | Route queries by freshness (real-time, temporal, static) |
-| **Intelligent Model Routing** | Simple→Haiku (80% cheaper), Complex→Opus (quality) = **30-40% cost savings** |
-| **Conversation State** | Prevent token budget surprises |
-| **Hallucination Grounding** | Reduce hallucinations 60-80% |
-
-### P2: Performance & Scale (Weeks 6-8)
-| Feature | Benefit |
-|---------|---------|
-| **Async Writes** | -5-10ms latency improvement |
-| **GraalVM Native** | 40x faster cold start (2s → 50ms) |
-| **Observability Dashboard** | Real-time cost tracking |
-| **Adaptive Rate Limiting** | Prevent cascading failures |
+Remaining roadmap items (intent polish, async write-behind, dashboards, etc.) live in **`docs/V2_TECHNICAL_ROADMAP.md`**.
 
 ---
 
-## 📈 Expected V2 Impact
+## Pitfalls
 
-**Performance**:
-```
-V1: 75ms avg response → V2: 60ms avg response (-20%)
-V1: 1000 req/s max → V2: 2000+ req/s max (2x)
-V1: 2s cold start → V2: 50ms cold start (40x improvement)
-```
-
-**Cost** (10M req/month scenario):
-```
-V1: $120,000/month (single model)
-V2: $74,000/month (intelligent routing)
-────────────────────
-Savings: $46,000/month (38% reduction)
-```
-
-**Hallucination**:
-```
-V1: 3% hallucination rate
-V2: <1% hallucination rate (-67%)
-```
+- Do not skip **`make verify-infra`** before trusting local stacks.
+- **`lumebridge.yaml`** is usually gitignored—copy from **`config/lumebridge.example.yaml`**.
+- **Fixture k6**: AI vs API pools differ (e.g. multiformat scenarios are **API**); see **`reports/version2_performance.md`**.
+- **Strict 1s latency SLO** in k6: pass **`K6_P95_MS=1000`**; default in **`stress_test.js`** may be higher to match typical **`ai-pro`/`api-pro`** p95 on dev hardware.
 
 ---
 
-## 📚 Documentation Structure
+## If something fails
 
-After you complete Phase 0 (infrastructure), follow these docs in order:
-
-1. **INFRASTRUCTURE_SETUP.md** ← YOU ARE HERE
-   - Complete all steps in Part 1-7
-   - Record baseline metrics from Part 6
-
-2. **V2_TECHNICAL_ROADMAP.md** ← SINGLE CANONICAL V2 DOC
-   - Priorities (P0 → P1 → P2), impact analysis, **detailed feature specs**, week-by-week plan, metrics, rollout, checklists
-
-3. **operations-guide.md** ← FOR DEPLOYMENT
-   - Updated with V2 profiles
-   - Cost tracking
-   - Performance benchmarks
+- Docker not running → start Docker Desktop (Windows/Mac).
+- DB not ready → wait and retry **`make verify-infra`**.
+- Stuck state → **`make down`**, wait, **`make up`**, **`make test`**.
+- Profile oddities → confirm **`PROFILE`**, **`CONFIG_FILE`**, and logs (**`make logs`** where applicable).
 
 ---
 
-## ⚠️ Common Pitfalls (Avoid These!)
+## Action checklist
 
-### ❌ Don't Start V2 Implementation Without Phase 0
-You need baseline metrics to measure V2's impact. Skip Phase 0 and you won't know if V2 actually helped.
+**Today**
 
-### ❌ Don't Implement Features Out of Order
-- **Must do P0 first** (cache poisoning fix) or hallucination will still happen
-- **Then do P1** (cost reduction + quality)
-- **Then do P2** (scale & observation)
+- [ ] **`docs/INFRASTRUCTURE_SETUP.md`** through verification
+- [ ] **`make build`**, **`make up`**, **`make verify-infra`**, **`make test`**
+- [ ] Smoke **api-pro**, **ai-pro**, **hybrid**
+- [ ] Optional: **`make bench`** and/or **`make stress-test-k6-ai`** / **`stress-test-k6-api`**
 
-### ❌ Don't Assume Docker Will Work Without Verification
-Run `make verify-infra` before moving on. Docker requires:
-- Docker Desktop running (Windows/Mac)
-- Internet connection (to pull images)
-- 20GB free disk space
+**This week**
 
-### ❌ Don't Test One Profile Only
-Test all three:
-- **api-pro** = basic gateway functionality
-- **ai-pro** = intelligent routing (critical for V2)
-- **hybrid** = all plugins (quality checks)
+- [ ] Read **`docs/V2_TECHNICAL_ROADMAP.md`**
+- [ ] Align tickets with P0 shipped vs P1/P2 backlog
 
 ---
 
-## 🔧 If Something Goes Wrong
-
-### "Docker not found"
-```bash
-# Windows: Start Docker Desktop from Start Menu
-# Mac: Start Docker Desktop from Applications
-```
-
-### "PostgreSQL not ready"
-```bash
-# Wait 30 seconds and try again
-sleep 30 && make verify-infra
-```
-
-### "Tests failing"
-```bash
-# Reset everything
-make down
-sleep 10
-make up
-sleep 30
-make test
-```
-
-### "Profile not responding"
-```bash
-# Check if gateway is still running (Terminal 1)
-# Check logs: make logs
-# Restart with Ctrl+C and PROFILE=xxx make run again
-```
+Start with **`docs/INFRASTRUCTURE_SETUP.md`**, then **`docs/V2_TECHNICAL_ROADMAP.md`**.
 
 ---
 
-## 📞 Success Criteria
-
-After completing all steps, you should have:
-
-- [x] Infrastructure running (3 containers healthy)
-- [x] Tests passing (73/73)
-- [x] All profiles working (api-pro, ai-pro, hybrid)
-- [x] Baseline metrics recorded (cache %, latency, throughput)
-- [x] Understanding of V2 priorities and impacts
-- [x] Ready to implement Phase 1 (P0 bug fixes)
-
-Once you check all boxes → You're ready to start V2 implementation!
-
----
-
-## 🎬 Your Action Items
-
-**Today:**
-- [ ] Complete INFRASTRUCTURE_SETUP.md Part 1-7
-- [ ] Run `make build`
-- [ ] Run `make up` & `make verify-infra`
-- [ ] Run `make test`
-- [ ] Test all 3 profiles
-- [ ] Run `make bench` and save results
-
-**This Week:**
-- [ ] Review **V2_TECHNICAL_ROADMAP.md**
-- [ ] Understand P0, P1, P2 priorities
-- [ ] Plan V2 bug fix implementation
-
-**Next Week:**
-- [ ] Start P0: Context-aware semantic cache
-- [ ] Start P0: Multi-format normalization
-
----
-
-**Ready to get started? Go to INFRASTRUCTURE_SETUP.md and complete Part 0-7!**
-
----
-
-Last Updated: 2026-05-12
-Next Review: After infrastructure setup complete
+Last updated: 2026-05-17

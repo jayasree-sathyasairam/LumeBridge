@@ -11,6 +11,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class IntelligentRouterPluginTest {
 
     @Test
+    void routesHighComplexityToTurbo() throws Exception {
+        IntelligentRouterPlugin router = new IntelligentRouterPlugin();
+        RequestContext ctx = new RequestContext(
+                "{\"prompt\":\"Design a fault tolerant architecture\"}".getBytes(StandardCharsets.UTF_8));
+        ctx.getMetadata().put(SentinelConstants.META_PROTOCOL_ROUTE, SentinelConstants.ROUTE_REST);
+        ctx.getMetadata().put(SentinelConstants.META_ROUTE, SentinelConstants.ROUTE_REST);
+        router.middleware().apply(ctx, () -> {});
+        assertEquals(SentinelConstants.ROUTE_REST, ctx.getMetadata().get(SentinelConstants.META_PROTOCOL_ROUTE));
+        assertEquals(SentinelConstants.ROUTE_GPT4_TURBO, ctx.getMetadata().get(SentinelConstants.META_ROUTE));
+        assertEquals(SentinelConstants.ROUTE_GPT4_TURBO, ctx.getMetadata().get(SentinelConstants.META_MODEL_ROUTE));
+    }
+
+    @Test
     void routesBasedOnSize() throws Exception {
         IntelligentRouterPlugin router = new IntelligentRouterPlugin();
         

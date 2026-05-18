@@ -146,6 +146,12 @@ public class LumeBridgeApp {
             pipeline.register(router);
         }
 
+        if (config.isPluginEnabled(SentinelConstants.PLUGIN_INTENT_CLASSIFIER)) {
+            IntentClassifierPlugin intent = new IntentClassifierPlugin();
+            intent.init(config.mergedConfig(SentinelConstants.PLUGIN_INTENT_CLASSIFIER));
+            pipeline.register(intent);
+        }
+
         if (config.isPluginEnabled(SentinelConstants.PLUGIN_SEMANTIC_CACHE)) {
             if (dataSource == null) {
                 System.err.println(SentinelConstants.ERR_SEMANTIC_CACHE_NO_DATASOURCE);
@@ -158,12 +164,6 @@ public class LumeBridgeApp {
             SemanticCachePlugin sem = new SemanticCachePlugin(semRepo);
             sem.init(config.mergedConfig(SentinelConstants.PLUGIN_SEMANTIC_CACHE));
             pipeline.register(sem);
-        }
-
-        if (config.isPluginEnabled(SentinelConstants.PLUGIN_INTENT_CLASSIFIER)) {
-            IntentClassifierPlugin intent = new IntentClassifierPlugin();
-            intent.init(config.mergedConfig(SentinelConstants.PLUGIN_INTENT_CLASSIFIER));
-            pipeline.register(intent);
         }
 
         if (config.isPluginEnabled(SentinelConstants.PLUGIN_CIRCUIT_BREAKER)) {
@@ -363,6 +363,15 @@ public class LumeBridgeApp {
         Map<String, String> meta = ctx.getMetadata();
         if (meta.containsKey(SentinelConstants.META_ROUTE)) {
             response.put(SentinelConstants.JSON_KEY_ROUTE, meta.get(SentinelConstants.META_ROUTE));
+        }
+        if (meta.containsKey(SentinelConstants.META_PROTOCOL_ROUTE)) {
+            response.put(SentinelConstants.JSON_KEY_PROTOCOL_ROUTE, meta.get(SentinelConstants.META_PROTOCOL_ROUTE));
+        }
+        if (meta.containsKey(SentinelConstants.META_MODEL_ROUTE)) {
+            response.put(SentinelConstants.JSON_KEY_MODEL_ROUTE, meta.get(SentinelConstants.META_MODEL_ROUTE));
+        }
+        if (meta.containsKey(SentinelConstants.META_QUERY_INTENT)) {
+            response.put(SentinelConstants.JSON_KEY_QUERY_INTENT, meta.get(SentinelConstants.META_QUERY_INTENT));
         }
         if (meta.containsKey(SentinelConstants.META_INTENT)) {
             response.put(SentinelConstants.JSON_KEY_INTENT, meta.get(SentinelConstants.META_INTENT));

@@ -4,6 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.lumebridge.SentinelConstants;
+import com.lumebridge.intent.QueryIntent;
+import com.lumebridge.util.PayloadUnwrap;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -14,9 +16,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * V2 P0: binds semantic-cache similarity to <strong>tenant</strong> (API key fingerprint) and a coarse
- * <strong>freshness / temporal</strong> bucket derived from prompt text — avoids cross-leaking “today” vs
- * “yesterday” answers when embeddings stay dangerously similar.
+ * V2 P0/P1: binds semantic-cache similarity to <strong>tenant</strong> (API key fingerprint) and a freshness slice:
+ * prompt heuristics (P0) and/or {@link QueryIntent} buckets (P1).
  */
 public final class SemanticCacheContextBuilder {
 
@@ -34,7 +35,7 @@ public final class SemanticCacheContextBuilder {
 
     /**
      * Coarse temporal / freshness bucket from payload body (JSON {@code prompt} or flattened primitives).
-     * Intentionally heuristic until P1 intent classification feeds explicit TTL buckets.
+     * When {@code intent-classifier} runs first, {@link com.lumebridge.plugin.SemanticCachePlugin} prefers explicit {@link QueryIntent} buckets.
      */
     public static String freshnessBucket(byte[] rawPayload) {
         String text = promptTextFromPayload(rawPayload).toLowerCase(Locale.ROOT);
@@ -57,6 +58,21 @@ public final class SemanticCacheContextBuilder {
         return "TIME_UNSPECIFIED";
     }
 
+    /**
+     * P1 scope slice derived from {@link QueryIntent}; keeps cache rows partitioned per roadmap TTL buckets.
+     */
+    public static String freshnessBucketForIntent(QueryIntent intent) {
+        if (intent == null) {
+            return "TIME_UNSPECIFIED";
+        }
+        return switch (intent) {
+            case REAL_TIME -> "INTENT_REAL_TIME";
+            case TEMPORAL -> "INTENT_TEMPORAL";
+            case STATIC -> "INTENT_STATIC";
+            case CONVERSATION, COMPUTATION -> "INTENT_NO_CACHE";
+        };
+    }
+
     public static String cacheScope(String tenantFingerprint, String freshnessBucket) {
         return tenantFingerprint + ":" + freshnessBucket;
     }
@@ -68,10 +84,12 @@ public final class SemanticCacheContextBuilder {
         return merged.getBytes(StandardCharsets.UTF_8);
     }
 
-    static String promptTextFromPayload(byte[] raw) {
+    /** Visible for intent routing and tests (prompt extraction mirrors semantic-cache embedding material). */
+    public static String promptTextFromPayload(byte[] raw) {
         if (raw == null || raw.length == 0) {
             return "";
         }
+        raw = PayloadUnwrap.unwrapUserInputEnvelope(raw);
         try {
             String s = new String(raw, StandardCharsets.UTF_8).trim();
             JsonElement el = JsonParser.parseString(s);

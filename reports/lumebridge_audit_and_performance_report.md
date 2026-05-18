@@ -58,7 +58,7 @@ That path reflects **historical / regression-style** benchmarking: comparable ro
 
 Weighted scenarios in **`benchmarks/k6/fixtures/scenarios.json`**, executed by **`make stress-test-k6-ai`** / **`make stress-test-k6-api`**, are **Version 2** coverage. They were **not** part of the original Version 1 benchmark story above.
 
-- **Fixture verification & P0 performance gate:** **`reports/Version2_P0_Performance.md`**
+- **Fixture verification & Version 2 k6 performance:** **`reports/version2_performance.md`**
 - **Operational commands:** **`docs/operations-guide.md`**
 
 ---
@@ -66,4 +66,4 @@ Weighted scenarios in **`benchmarks/k6/fixtures/scenarios.json`**, executed by *
 ## Related documents
 
 - **`reports/k6_stress_audit_snapshot.md`** — latest **`bench-runner.sh`** metrics table (Version 1 pipeline).
-- **`reports/Version2_P0_Performance.md`** — fixture categories, AI vs API scope, multiformat notes (Version 2).
+- **`reports/version2_performance.md`** — fixture categories, AI vs API scope, multiformat notes (Version 2).

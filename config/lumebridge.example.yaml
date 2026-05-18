@@ -68,3 +68,5 @@ plugins:
     embedding_dimensions: 64
   intent-classifier:
     enabled: false
+    # P1: pattern-based QueryIntent (REAL_TIME, TEMPORAL, STATIC, CONVERSATION, COMPUTATION).
+    # Optional JSON override: "query_intent": "STATIC"

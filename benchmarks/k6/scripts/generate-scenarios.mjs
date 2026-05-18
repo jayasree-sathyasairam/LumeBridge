@@ -74,7 +74,7 @@ const scenarios = [
     test_type: "AI",
     body: {
       prompt:
-        "Ticket: caller cited PAN 4111111111111111 and SSN-pattern 078-05-1120 phone +1-415-555-0199",
+        "Ticket: caller cited PAN 4111 1111 1111 1111 and SSN-pattern 078-05-1120 phone +1-415-555-0199",
       nonce: "${UNIQUE_NONCE}",
     },
   }),
@@ -731,7 +731,7 @@ const scenarios = [
     id: "LB-INTENT-EXPLICIT",
     tags: ["@v2-p1-intent", "@intent-classifier"],
     plugins_under_test: ["intent-classifier"],
-    expectation_mode: "policy_dependent",
+    expectation_mode: "expect_strict",
     expected_http_status: 200,
     weight: 4,
     test_type: "AI",
@@ -740,6 +740,156 @@ const scenarios = [
         "STATIC_REFERENCE_QUESTION: capital of France — cache-eligible trivia bucket",
       nonce: "${UNIQUE_NONCE}",
     },
+    expect_body_json: {
+      query_intent: "STATIC",
+      cache_eligible: true,
+    },
+    notes: "Requires PROFILE with intent-classifier (e.g. ai-pro); asserts gateway JSON metadata",
+  }),
+
+  baseScenario({
+    id: "LB-P1-INTENT-JSON-TEMPORAL",
+    tags: ["@v2-p1-intent", "@intent-classifier"],
+    plugins_under_test: ["intent-classifier"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      query_intent: "TEMPORAL",
+      prompt: "filler text — override should win",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      query_intent: "TEMPORAL",
+      cache_eligible: true,
+    },
+  }),
+
+  baseScenario({
+    id: "LB-P1-INTENT-CONVERSATION",
+    tags: ["@v2-p1-intent", "@intent-classifier"],
+    plugins_under_test: ["intent-classifier"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      prompt: "Tell me a creative story about river otters meeting bioluminescence.",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      query_intent: "CONVERSATION",
+      cache_eligible: false,
+    },
+  }),
+
+  baseScenario({
+    id: "LB-P1-INTENT-COMPUTATION",
+    tags: ["@v2-p1-intent", "@intent-classifier"],
+    plugins_under_test: ["intent-classifier"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      prompt: "Solve this integral step by step: integrate x dx from 0 to 1.",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      query_intent: "COMPUTATION",
+      cache_eligible: false,
+    },
+  }),
+
+  baseScenario({
+    id: "LB-P1-INTENT-REALTIME",
+    tags: ["@v2-p1-intent", "@intent-classifier"],
+    plugins_under_test: ["intent-classifier"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      prompt: "What is the weather today in Seattle?",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      query_intent: "REAL_TIME",
+      cache_eligible: true,
+    },
+  }),
+
+  baseScenario({
+    id: "LB-P1-INTENT-TEMPORAL-PROMPT",
+    tags: ["@v2-p1-intent", "@intent-classifier"],
+    plugins_under_test: ["intent-classifier"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      prompt: "What was the rainfall yesterday in Portland?",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      query_intent: "TEMPORAL",
+      cache_eligible: true,
+    },
+  }),
+
+  baseScenario({
+    id: "LB-P1-ROUTING-MINI",
+    tags: ["@v2-p1-routing", "@intelligent-router"],
+    plugins_under_test: ["intelligent-router", "dual-mode-router"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      prompt: "OK.",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      protocol_route: "rest",
+      route: "gpt-4o-mini",
+      model_route: "gpt-4o-mini",
+    },
+    notes: "ai-pro / hybrid: LOW complexity + small payload → gpt-4o-mini",
+  }),
+
+  baseScenario({
+    id: "LB-P1-ROUTING-MEDIUM",
+    tags: ["@v2-p1-routing", "@intelligent-router"],
+    plugins_under_test: ["intelligent-router", "dual-mode-router"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      prompt:
+        "Summarize the OAuth2 authorization code flow for a public SPA in five bullets.",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      protocol_route: "rest",
+      route: "gpt-4o",
+      model_route: "gpt-4o",
+    },
+    notes: "Keyword summarize → MEDIUM tier → gpt-4o",
+  }),
+
+  baseScenario({
+    id: "LB-P1-ROUTING-HIGH",
+    tags: ["@v2-p1-routing", "@intelligent-router"],
+    plugins_under_test: ["intelligent-router", "dual-mode-router"],
+    expected_http_status: 200,
+    weight: 2,
+    test_type: "AI",
+    body: {
+      prompt:
+        "Design a fault tolerant multi-region payment capture API with idempotent webhooks.",
+      nonce: "${UNIQUE_NONCE}",
+    },
+    expect_body_json: {
+      protocol_route: "rest",
+      route: "gpt-4-turbo",
+      model_route: "gpt-4-turbo",
+    },
+    notes: "Keyword design → HIGH tier → gpt-4-turbo",
   }),
 
   // --- DLQ hint ---
