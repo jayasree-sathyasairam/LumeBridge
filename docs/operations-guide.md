@@ -168,29 +168,128 @@ docker run hello-world
 
 ## Part 2: Quick Start
 
-Once setup is complete, navigate to the LumeBridge directory and run:
+Do this from the **repository root** (`LumeBridge/`).
+
+### 0. Copy configuration (macOS, Linux, Git Bash, PowerShell)
+
+Default Postgres in `infra/docker-compose.yml` is user **`lumebridge`**, password **`lumebridge`**, database **`lumebridge_nexus`** — matching `config/lumebridge.example.yaml`.
+
+**macOS / Linux / Git Bash:**
 
 ```bash
-# 1. Start infrastructure (Postgres, Redis, Redpanda)
-make up
-
-# 2. Verify infrastructure health
-make verify-infra
-
-# 3. Run unit tests (73+ plugins)
-make test
-
-# 4. Build & run (choose one profile):
-
-# API Gateway mode (no AI)
-PROFILE=api-pro make run
-
-# AI Gateway mode (with intelligent routing)
-PROFILE=ai-pro make run
-
-# Full hybrid mode (all plugins)
-PROFILE=hybrid make run
+cp config/lumebridge.example.yaml lumebridge.yaml
+# Edit lumebridge.yaml if you need provider keys or plugin toggles.
 ```
+
+**Windows PowerShell:**
+
+```powershell
+Copy-Item -Path "config\lumebridge.example.yaml" -Destination "lumebridge.yaml"
+```
+
+---
+
+### 1–3. Infrastructure and tests
+
+Makefile targets **`up`**, **`down`**, **`ps`**, **`logs`**, and **`verify-infra`** invoke **Bash** (`infra/compose.sh`, `infra/verify-infra.sh`). Use one of the approaches below.
+
+#### macOS / Linux / Git Bash (including Windows Git Bash)
+
+**Recommended on Windows** for `make up` / `make verify-infra` (Makefile calls Bash scripts).
+
+```bash
+make up
+make verify-infra
+make test
+```
+
+#### Windows PowerShell (no Bash for infrastructure)
+
+From repo root, run Docker Compose directly:
+
+```powershell
+docker compose -p lumebridge -f infra/docker-compose.yml up -d
+
+docker compose -p lumebridge -f infra/docker-compose.yml exec -T redis redis-cli ping
+docker compose -p lumebridge -f infra/docker-compose.yml exec -T postgres pg_isready -U lumebridge -d lumebridge_nexus
+docker compose -p lumebridge -f infra/docker-compose.yml exec -T redpanda rpk cluster health
+
+cd core\java; mvn test
+cd ..\..
+```
+
+PowerShell equivalents for stopping / listing / logs:
+
+```powershell
+docker compose -p lumebridge -f infra/docker-compose.yml down
+docker compose -p lumebridge -f infra/docker-compose.yml ps
+docker compose -p lumebridge -f infra/docker-compose.yml logs -f
+```
+
+---
+
+### 4. Build & run (choose one profile)
+
+**Prerequisite:** Profiles **`api-pro`**, **`ai-pro`**, and **`hybrid`** enable plugins that connect to **PostgreSQL** (and Redis) at startup. Start infra **before** `make run`:
+
+```bash
+make up
+make verify-infra
+```
+
+If you skip this, you will see **`Connection to localhost:5432 refused`** until Postgres is running.
+
+The Makefile sets **`CONFIG_FILE`** to the repo-root **`lumebridge.yaml`** automatically when you use **`make run`**.
+
+#### macOS / Linux / Git Bash
+
+```bash
+PROFILE=api-pro make run      # API Gateway mode (no AI)
+PROFILE=ai-pro make run       # AI Gateway mode (intelligent routing)
+PROFILE=hybrid make run       # Full hybrid (all plugins)
+```
+
+#### Windows PowerShell
+
+Prefer passing the profile as a **Make variable** (no PowerShell env var needed):
+
+```powershell
+make build
+make run PROFILE=api-pro
+
+make run PROFILE=ai-pro
+make run PROFILE=hybrid
+```
+
+Equivalent using environment variables if you prefer:
+
+```powershell
+$env:PROFILE = "api-pro"; make run
+```
+
+#### Windows PowerShell without Make for **run** only
+
+Still build once from repo root (`make build` or Maven below), then:
+
+```powershell
+cd core\java
+$env:CONFIG_FILE = "$(Resolve-Path ..\..\lumebridge.yaml).Path"
+$env:PROFILE = "api-pro"
+java --enable-preview -jar target/lumebridge-core.jar
+```
+
+Adjust the `CONFIG_FILE` path if your repo root differs.
+
+---
+
+### Quick reference
+
+| Step | Mac / Git Bash | Windows PowerShell (Compose native) |
+|------|----------------|-------------------------------------|
+| Start infra | `make up` | `docker compose -p lumebridge -f infra/docker-compose.yml up -d` |
+| Health checks | `make verify-infra` | Redis / Postgres / Redpanda `docker compose ... exec` commands above |
+| Tests | `make test` | `cd core\java; mvn test` |
+| Run gateway | `PROFILE=api-pro make run` or `make run PROFILE=api-pro` | `make run PROFILE=api-pro` after `make build` (same form as Mac) |
 
 ---
 
@@ -207,12 +306,11 @@ Select a profile based on your use case:
 | **hybrid** | **Full Gateway** | **All 25+ plugins** (Pro API + Pro AI + DLQ + Telemetry) |
 
 Run with a profile:
+
 ```bash
 PROFILE=api-pro make run
-PROFILE=hybrid make build
+PROFILE=hybrid make run
 ```
-
----
 
 ## Part 4: Build & Test Commands
 
@@ -222,28 +320,204 @@ PROFILE=hybrid make build
 | `make test` | Run unit tests |
 | `make run` | Build and run application |
 | `make clean` | Remove build artifacts |
-| `make up` | Start Docker infrastructure |
+| `make up` | Start Docker infrastructure (needs **Bash** — use Git Bash on Windows, or see Part 2 PowerShell) |
 | `make down` | Stop Docker infrastructure |
 | `make ps` | Show running containers |
 | `make logs` | Stream container logs |
 | `make verify-infra` | Health check on infrastructure |
+| `make bench-gate` | k6 load test — concurrency gate (`benchmarks/k6/throttler_test.js`) |
+| `make bench-lock` | k6 load test — distributed lock |
+| `make bench-step5` | k6 load test — Step 5 intelligence payloads (`benchmarks/k6/step5_intelligence.js`) |
+| `make bench` | Runs **`bench-gate`** then **`bench-lock`** (not **`bench-step5`**) |
+| `make stress-test` | **`scripts/bench-runner.sh`** — **`api-pro`** then **`ai-pro`**, 10k k6 iterations each; needs **Bash**, **k6**, **Python** (**`python3`**, **`python`**, or Windows **`py -3`**), **make** |
+| `make stress-test-k6-api` | k6-only stress (`TEST_TYPE=API`). Start gateway first: **`make run PROFILE=api-pro`** |
+| `make stress-test-k6-ai` | k6-only stress (`TEST_TYPE=AI`). Start gateway first: **`make run PROFILE=ai-pro`** |
+
+### Benchmarks (k6)
+
+Targets **`make bench`**, **`bench-gate`**, **`bench-lock`**, **`bench-step5`**, and the **`stress-test-k6-*`** helpers invoke **[Grafana k6](https://grafana.com/docs/k6/latest/set-up/install-k6/)**. If k6 is missing, Windows **`make`** often reports **`make (e=2): The system cannot find the file specified`** because it cannot spawn the **`k6`** executable.
+
+**`make stress-test`** runs **`"$(BASH)" "$(CURDIR)/scripts/bench-runner.sh"`**. On **Windows**, the Makefile **defaults `BASH` to Git Bash** when it finds **`%ProgramFiles%\Git\bin\bash.exe`** or **`%LOCALAPPDATA%\Programs\Git\bin\bash.exe`** — avoiding a broken **WSL** **`bash`** shim. **`make up`** / **`verify-infra`** use the same **`$(BASH)`**. Override if Git is installed elsewhere:
+
+```bash
+make stress-test BASH="C:/Program Files/Git/bin/bash.exe"
+```
+
+The script resolves the repo root, writes temp files under **`TMPDIR` / `TEMP` / `/tmp`**, exports **`CONFIG_FILE`**, runs **`PROFILE=… make run`** in the background, runs k6, and appends rows using embedded **Python** on **`--summary-export`** JSON (**`rate`**, **`p(95)`**, **`count` / `fails` / `passes`**). Output: **`reports/security_audit_report.md`**. On **Git Bash** + **Windows Python (`py -3`)**, the summary path is passed through **`cygpath -w`** so Python opens the real file (otherwise the table can show **0.00%** / zeros).
+
+Alternatively open **Git Bash** and run **`bash scripts/bench-runner.sh`** manually. Use **`make stress-test-k6-*`** if you only need k6 with the gateway already running.
+
+**Windows (pick one):**
+
+```powershell
+winget install GrafanaLabs.k6
+```
+
+```powershell
+choco install k6 -y
+```
+
+**macOS (Homebrew):**
+
+```bash
+brew install k6
+```
+
+**Python 3** (only **`make stress-test`** / **`scripts/bench-runner.sh`** — parses k6 **`--summary-export`** JSON):
+
+**Windows (pick one):**
+
+```powershell
+winget install Python.Python.3.12
+```
+
+(Re-open the terminal afterward.)
+
+```powershell
+choco install python3 -y
+```
+
+From **[python.org](https://www.python.org/downloads/windows/)**: run the installer and enable **Add python.exe to PATH** (optional — see below).
+
+Verify (**note the hyphen:** **`py -3`**, not **`py 3`**):
+
+```powershell
+py -3 --version
+python --version
+```
+
+Many installs expose only the **`py`** launcher; **`python`** may still be missing from **`PATH`**. **`scripts/bench-runner.sh`** tries **`python3`**, then **`python`**, then **`py -3`**, so stress-test works when **`py -3`** succeeds even if **`python`** does not.
+
+To make **`python`** work in PowerShell, enable **Add to PATH** in the installer or **Settings → Apps → Advanced app settings → App execution aliases** (disable **`python.exe` / `python3.exe`** store stubs if they interfere).
+
+**macOS (Homebrew):**
+
+```bash
+brew install python@3
+```
+
+**Linux:** **`sudo apt install python3`** (Debian/Ubuntu) or use your distro package manager.
+
+Start the gateway on **`http://localhost:8080`** before running benchmarks. For **`bench-step5`**, enable the Step 5 plugins noted in the **`make`** banner (see **`lumebridge.yaml`**).
+
+Override the k6 binary if needed:
+
+```bash
+make bench-step5 K6=/path/to/k6
+```
+
+Stress helpers use **`TARGET_URL`** (default **`http://localhost:8080`**):
+
+```bash
+make stress-test-k6-api TARGET_URL=http://127.0.0.1:8080
+```
 
 ---
 
 ## Part 5: Sanity Checks
 
-Once the gateway is running (`make run`), verify it from another terminal:
+Once the gateway is running (`make run`), verify from another terminal.
+
+The same **`POST /task`** URL and headers work for **every profile**; only the active plugins (from **`PROFILE`** + `lumebridge.yaml`) change. When **`nonce-ordering`** is enabled, use a **new `nonce`** on each request (increment or pick an unused value).
+
+### Optional: liveness
+
+**macOS / Linux / Git Bash:**
 
 ```bash
-# Test Authentication & Core Pipeline
-curl -X POST http://localhost:8080/task \
+curl -s http://localhost:8080/healthz
+```
+
+**Windows PowerShell:**
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8080/healthz"
+```
+
+### Basic check (any profile)
+
+Minimal payload to confirm auth, pipeline, and JSON response:
+
+**macOS / Linux / Git Bash:**
+
+```bash
+curl -sS -X POST http://localhost:8080/task \
   -H "X-API-Key: sk-sentinel-user123" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Hello", "nonce": 1}'
-
-# Expected response:
-# {"status": "success", "result": "..."}
 ```
+
+**Windows PowerShell — see the full JSON body**
+
+**`Invoke-RestMethod`** deserializes JSON into a **`PSCustomObject`**. That is convenient for properties like **`$r.payload_hash`**, but nested or long values can look incomplete in the default console view (so it may seem like you “only see the hash”).
+
+**`Invoke-WebRequest`** returns the HTTP response wrapper; the gateway body is the **raw string** **`$response.Content`**, which always shows the **complete JSON** exactly as returned:
+
+```powershell
+$uri = "http://localhost:8080/task"
+$headers = @{
+  "X-API-Key"    = "sk-sentinel-user123"
+  "Content-Type" = "application/json"
+}
+$body = '{"prompt": "Hello", "nonce": 1}'
+$response = Invoke-WebRequest -Uri $uri -Method Post -Headers $headers -Body $body
+$response.StatusCode   # expect 200 on success
+$response.Content      # full JSON body as text
+```
+
+Pretty-print in PowerShell:
+
+```powershell
+$response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
+```
+
+**Windows PowerShell — parsed object (`Invoke-RestMethod`)**
+
+If you prefer typed fields, expand them explicitly:
+
+```powershell
+$headers = @{
+  "X-API-Key"    = "sk-sentinel-user123"
+  "Content-Type" = "application/json"
+}
+$r = Invoke-RestMethod -Uri "http://localhost:8080/task" -Method Post -Headers $headers -Body '{"prompt": "Hello", "nonce": 1}'
+$r | Format-List *
+```
+
+**Expected on success:** HTTP **200**, **`"status": "completed"`**, plus fields such as **`payload_hash`**, **`request_id`**, **`metrics`**, and model output (e.g. **`result`** or intelligence keys — depends on profile). See [api-spec.md](api-spec.md).
+
+### **`ai-pro`** — routing sanity (optional)
+
+After the basic check, exercise **intent / model routing** with two different prompts (use **new nonces**):
+
+**macOS / Linux / Git Bash:**
+
+```bash
+curl -sS -X POST http://localhost:8080/task \
+  -H "X-API-Key: sk-sentinel-user123" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "List 5 fruits", "nonce": 2}'
+
+curl -sS -X POST http://localhost:8080/task \
+  -H "X-API-Key: sk-sentinel-user123" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Design a distributed system for X", "nonce": 3}'
+```
+
+**Windows PowerShell** (full bodies via **`Content`**):
+
+```powershell
+$uri = "http://localhost:8080/task"
+$h = @{ "X-API-Key" = "sk-sentinel-user123"; "Content-Type" = "application/json" }
+(Invoke-WebRequest -Uri $uri -Method Post -Headers $h -Body '{"prompt": "List 5 fruits", "nonce": 2}').Content
+(Invoke-WebRequest -Uri $uri -Method Post -Headers $h -Body '{"prompt": "Design a distributed system for X", "nonce": 3}').Content
+```
+
+Compare routing / model metadata in each JSON response (exact shape depends on enabled intelligence plugins).
+
+### **`hybrid`** — quick extra check
+
+For PII scrubbing and the full plugin stack, send a prompt with synthetic PII (examples in [INFRASTRUCTURE_SETUP.md](INFRASTRUCTURE_SETUP.md)).
 
 ---
 
@@ -253,8 +527,22 @@ Plugins are controlled via `lumebridge.yaml`. You can enable/disable individual 
 
 ### View Active Plugins
 
+**macOS / Linux / Git Bash** (optional [`jq`](https://jqlang.github.io/download/)):
+
 ```bash
 curl -s http://localhost:8080/metrics | jq
+```
+
+**Without jq:**
+
+```bash
+curl -s http://localhost:8080/metrics
+```
+
+**Windows PowerShell:**
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8080/metrics"
 ```
 
 ### Manual Plugin Toggles
@@ -291,15 +579,16 @@ redis-cli KEYS "lock:*" | xargs redis-cli DEL
 
 ### Postgres (Tasks, Cache)
 
+Defaults match `infra/docker-compose.yml`: user **`lumebridge`**, password **`lumebridge`**, database **`lumebridge_nexus`**.
+
 ```bash
-# Access database
-psql -h localhost -U lumebadmin -d lumebridge
+# Interactive SQL
+PGPASSWORD=lumebridge psql -h localhost -U lumebridge -d lumebridge_nexus
 
-# Semantic cache requires pgvector
-# Vector similarity search is handled via SQL
+# Semantic cache uses pgvector — see SQL / migrations
 
-# Manual vacuum for performance
-psql -c "VACUUM ANALYZE tasks;"
+# Manual vacuum (example)
+PGPASSWORD=lumebridge psql -h localhost -U lumebridge -d lumebridge_nexus -c "VACUUM ANALYZE tasks;"
 ```
 
 ### Redpanda (DLQ, Telemetry)
@@ -324,6 +613,14 @@ The `THROTTLE_PERMITS` variable controls max concurrent requests:
 THROTTLE_PERMITS=100 PROFILE=api-pro make run
 ```
 
+**Windows PowerShell:**
+
+```powershell
+$env:THROTTLE_PERMITS = "100"
+$env:PROFILE = "api-pro"
+make run
+```
+
 **Saturation**: If `active_permits` == `max_permits`, the gate is full. Scale horizontally or increase permits.
 
 ### Circuit Breaker & Retries
@@ -333,17 +630,25 @@ THROTTLE_PERMITS=100 PROFILE=api-pro make run
 
 ### Horizontal Scaling
 
-Run multiple instances behind a Load Balancer. Redis handles distributed locking automatically:
+Run multiple instances behind a load balancer. Redis handles distributed locking automatically.
+
+**macOS / Linux / Git Bash:**
 
 ```bash
-# Terminal 1
 THROTTLE_PERMITS=50 PROFILE=api-pro make run
-
-# Terminal 2
+# Second terminal:
 THROTTLE_PERMITS=50 PROFILE=api-pro make run
-
-# Load balancer distributes requests across both instances
 ```
+
+**Windows PowerShell:**
+
+```powershell
+$env:THROTTLE_PERMITS = "50"
+$env:PROFILE = "api-pro"
+make run
+```
+
+Repeat in a second terminal for the second instance.
 
 ---
 
@@ -374,41 +679,54 @@ PROFILE=api-pro make run
 | `409 Conflict` | Orphaned locks | Wait for TTL (30s) or clear Redis: `redis-cli FLUSHALL` |
 | `High wait_ms` | Gate saturation | Increase `THROTTLE_PERMITS` or scale horizontally |
 | `NoClassDefFound` | Missing dependencies | Ensure you're using the full shaded JAR from `make build` |
-| `DB connection refused` | Database not ready | Wait 30 seconds after `make up` or run `make verify-infra` |
+| `DB connection refused` / `localhost:5432 refused` | Postgres not running or still starting | Run **`make up`** (or **`docker compose ... up -d`**) **before** `make run` for `api-pro` / `ai-pro` / `hybrid`. Wait ~30s, then **`make verify-infra`**. Ensure nothing else is bound to port **5432**. |
+| Postgres missing from **`docker ps`** (Redis/Redpanda only) | Postgres exited on startup — often a failed **`init-db.sql`** bind mount or a bad data volume | Pull latest **`infra/docker-compose.yml`** (mounts **`migrations/init-db.sql`**). Run **`docker compose -p lumebridge -f infra/docker-compose.yml logs postgres`**. If the DB was half-initialized, **`docker compose ... down -v`** then **`up -d`** (wiping **`postgres-data`**). |
 | `pgvector missing` | Postgres version issue | Use `pgvector/pgvector:latest` image in docker-compose |
 | `400 Safety` | Prompt triggered safety rules | Check `lumebridge.yaml` safety-guardrails config |
-| `docker not found` | Docker daemon not running | Start Docker Desktop from Applications |
-| `make: command not found` | Make not installed | Run Chocolatey/Homebrew install (Step 2 above) |
+| `docker not found` | Docker daemon not running | Start Docker Desktop |
+| `make: command not found` | Make not installed | Install via Chocolatey (Windows) or Homebrew (Mac) — Part 1 |
+| `execvpe(/bin/bash) failed` / WSL relay error when running **`make`** | **`bash`** goes through **WSL** integration but **`/bin/bash`** isn’t available in that distro | Use **`make stress-test BASH="C:/Program Files/Git/bin/bash.exe"`** (path may vary), or fix/install **WSL**; prefer **Git Bash** terminal for **`make`** |
+| `execvpe failed` / Make cannot run recipes | **`make`** invokes **`bash`** (infra, **`make stress-test`**) but **`bash`** is missing | Use **Git Bash** / **WSL** from repo root, **`docker compose`** from PowerShell (Part 2), **`make … BASH="/path/to/bash.exe"`**, or **`make stress-test-k6-*`** |
+| `CONFIG_FILE` / **`PROFILE`** ignored when using **`make run`** on Windows | **`cmd.exe`** does not support POSIX `VAR=value command` in Makefile recipes | The Makefile **`export`**s both variables so Java always receives them (pull latest `Makefile`) |
+| Postgres authentication failed | YAML credentials ≠ Compose | Align `postgres:` in `lumebridge.yaml` with `docker-compose.yml` (defaults: `lumebridge` / `lumebridge_nexus`) |
+| **`FATAL: database "lumebridge" does not exist`** in Postgres logs | PostgreSQL clients default the DB name to the **username** when **`database` / `-d`** is omitted; Compose creates **`lumebridge_nexus`**, not **`lumebridge`** | In **`lumebridge.yaml`**, set **`postgres.database: lumebridge_nexus`**. For **`psql`**, use **`-d lumebridge_nexus`**. Recreate the Postgres service after pulling the fixed **`infra/docker-compose.yml`** healthcheck (uses **`POSTGRES_DB`**). |
+| **`Need python3, python, or py`** when running **`make stress-test`** | No Python on **`PATH`** | Install Python (Benchmarks section). On Windows run **`py -3 --version`** — **`bench-runner.sh`** uses **`py -3`** if **`python`** is missing |
 
-### Resetting on Windows 10
+### Resetting on Windows
 
-```powershell
-# Terminal 1 - Stop infrastructure
+Use **Git Bash** if you rely on `make down` / `make up`, or use **`docker compose`** as in Part 2.
+
+**Git Bash — Terminal 1 (infra):**
+
+```bash
 make down
-
-# Verify containers are gone
 docker ps
-
-# Start fresh
 make up
-Start-Sleep -Seconds 30
+sleep 30
 make verify-infra
-
-# Terminal 2 - Run tests
-make test
-
-# Terminal 3 - Run gateway
-$env:PROFILE="api-pro"
-make run
-
-# Terminal 4 - Test API
-curl -X POST http://localhost:8080/task `
-  -H "X-API-Key: sk-sentinel-user123" `
-  -H "Content-Type: application/json" `
-  -d '{"prompt": "Hello", "nonce": 1}'
 ```
 
----
+**PowerShell — Terminal 2 (tests):**
+
+```powershell
+make test
+```
+
+**PowerShell — Terminal 3 (gateway):**
+
+```powershell
+make run PROFILE=api-pro
+```
+
+**PowerShell — Terminal 4 (API test):**
+
+Same sanity checks as **Part 5**; use **`Invoke-WebRequest`** and **`$response.Content`** to print the full JSON body:
+
+```powershell
+$uri = "http://localhost:8080/task"
+$h = @{ "X-API-Key" = "sk-sentinel-user123"; "Content-Type" = "application/json" }
+(Invoke-WebRequest -Uri $uri -Method Post -Headers $h -Body '{"prompt": "Hello", "nonce": 1}').Content
+```
 
 ## Part 10: Runtime vs Build-time Dependencies
 
@@ -456,4 +774,4 @@ This requires Maven profiles defined in `pom.xml` (planned for future versions).
 - Reset environment: `make down && make up && make verify-infra`
 - For persistent issues, share error output from `make logs` and `docker ps`
 
-Last updated: 2026-05-12
+Last updated: 2026-05-17

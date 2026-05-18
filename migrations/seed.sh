@@ -3,10 +3,10 @@ set -euo pipefail
 
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-POSTGRES_USER="${POSTGRES_USER:-sentinel}"
-POSTGRES_DB="${POSTGRES_DB:-sentinel_nexus}"
+POSTGRES_USER="${POSTGRES_USER:-lumebridge}"
+POSTGRES_DB="${POSTGRES_DB:-lumebridge_nexus}"
 
-export PGPASSWORD="${POSTGRES_PASSWORD:-sentinel}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-lumebridge}"
 
 echo "Seeding sample tasks..."
 

@@ -17,9 +17,9 @@ redis:
 postgres:
   host: localhost
   port: 5432
-  user: sentinel
-  password: sentinel
-  database: sentinel_nexus
+  user: lumebridge
+  password: lumebridge
+  database: lumebridge_nexus
 
 kafka:
   bootstrap_servers: localhost:19092
