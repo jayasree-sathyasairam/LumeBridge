@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +41,17 @@ class SemanticCachePluginTest {
         assertEquals(SentinelConstants.VAL_TRUE, ctx.getMetadata().get(SentinelConstants.META_SEMANTIC_CACHE_HIT));
         assertTrue(ctx.getMetadata().containsKey(SentinelConstants.META_SEMANTIC_CACHE_SIMILARITY));
         assertEquals("k1", ctx.getMetadata().get(SentinelConstants.META_SEMANTIC_CACHE_KEY));
+    }
+
+    @Test
+    void skipsLookupWhenIntentNotCacheEligible() throws Exception {
+        SemanticCachePlugin p = new SemanticCachePlugin(repository);
+        p.init(Map.of());
+        RequestContext ctx = new RequestContext("{\"prompt\":\"hello\"}".getBytes());
+        ctx.getMetadata().put(SentinelConstants.META_INTENT_CACHE_ELIGIBLE, SentinelConstants.VAL_FALSE);
+        ctx.putRequestHeader(SentinelConstants.HEADER_API_KEY, "k");
+        p.middleware().apply(ctx, () -> { });
+        verify(repository, never()).findClosest(any(), anyDouble(), anyString());
     }
 
     @Test

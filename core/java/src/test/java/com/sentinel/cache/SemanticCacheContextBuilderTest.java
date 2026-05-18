@@ -28,8 +28,8 @@ class SemanticCacheContextBuilderTest {
     }
 
     @Test
-    void anonymousTenantMatchesBlankApiKey() {
-        assertEquals("anonymous", SemanticCacheContextBuilder.tenantFingerprint(null));
-        assertEquals("anonymous", SemanticCacheContextBuilder.tenantFingerprint("   "));
+    void intentBucketsAreStable() {
+        assertEquals("INTENT_STATIC", SemanticCacheContextBuilder.freshnessBucketForIntent(com.lumebridge.intent.QueryIntent.STATIC));
+        assertEquals("INTENT_NO_CACHE", SemanticCacheContextBuilder.freshnessBucketForIntent(com.lumebridge.intent.QueryIntent.CONVERSATION));
     }
 }

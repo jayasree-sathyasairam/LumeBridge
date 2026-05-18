@@ -37,4 +37,24 @@ class PIIScrubberPluginTest {
         assertTrue(out.contains("[IP_"), "Should redact IP");
         assertTrue(out.contains("[TOKEN_"), "Should redact JWT");
     }
+
+    @Test
+    void doesNotCorruptJsonNonceDigitRun() throws Exception {
+        PIIScrubberPlugin pii = new PIIScrubberPlugin();
+        String raw = "{\"query_intent\":\"TEMPORAL\",\"prompt\":\"x\",\"nonce\":\"173712345678901234\"}";
+        RequestContext ctx = new RequestContext(raw.getBytes(StandardCharsets.UTF_8));
+        pii.middleware().apply(ctx, () -> { });
+        assertEquals(raw, new String(ctx.getRawPayload(), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void stillRedactsSpacedCardNumber() throws Exception {
+        PIIScrubberPlugin pii = new PIIScrubberPlugin();
+        String raw = "{\"note\":\"pay with 4111 1111 1111 1111\"}";
+        RequestContext ctx = new RequestContext(raw.getBytes(StandardCharsets.UTF_8));
+        pii.middleware().apply(ctx, () -> { });
+        String out = new String(ctx.getRawPayload(), StandardCharsets.UTF_8);
+        assertTrue(out.contains("[CARD_"), "Spaced PAN should still redact");
+        assertTrue(!out.contains("4111"), "Digits should be masked");
+    }
 }

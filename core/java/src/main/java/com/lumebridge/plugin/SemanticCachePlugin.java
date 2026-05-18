@@ -4,6 +4,7 @@ import com.lumebridge.SentinelConstants;
 import com.lumebridge.ai.EmbeddingUtil;
 import com.lumebridge.cache.SemanticCacheContextBuilder;
 import com.lumebridge.db.SemanticCacheRepository;
+import com.lumebridge.intent.QueryIntent;
 import com.lumebridge.pipeline.MiddlewareFunc;
 import com.lumebridge.pipeline.Plugin;
 import com.lumebridge.pipeline.Stage;
@@ -13,7 +14,7 @@ import java.util.Map;
 /**
  * pgvector nearest-neighbour lookup using deterministic pseudo-embeddings; on hit, exposes cached JSON in metadata
  * for the HTTP layer ({@link com.lumebridge.LumeBridgeApp}).
- * <p>V2 P0: lookups are scoped by API-key fingerprint and a coarse freshness bucket derived from prompt text.</p>
+ * <p>V2 P0/P1: scoped by tenant fingerprint and freshness bucket (prompt heuristics and/or {@link QueryIntent}).</p>
  */
 public class SemanticCachePlugin implements Plugin {
 
@@ -26,7 +27,7 @@ public class SemanticCachePlugin implements Plugin {
 
     @Override public String name() { return SentinelConstants.PLUGIN_SEMANTIC_CACHE; }
     @Override public Stage stage() { return Stage.ROUTE; }
-    @Override public int order() { return 2; }
+    @Override public int order() { return 3; }
 
     @Override
     public void init(Map<String, String> config) {
@@ -44,9 +45,14 @@ public class SemanticCachePlugin implements Plugin {
             }
             try {
                 byte[] raw = ctx.getRawPayload();
+                String eligible = ctx.getMetadata().get(SentinelConstants.META_INTENT_CACHE_ELIGIBLE);
+                if (SentinelConstants.VAL_FALSE.equalsIgnoreCase(eligible)) {
+                    next.run();
+                    return;
+                }
                 String apiKey = ctx.getRequestHeader(SentinelConstants.HEADER_API_KEY);
                 String tenant = SemanticCacheContextBuilder.tenantFingerprint(apiKey);
-                String freshness = SemanticCacheContextBuilder.freshnessBucket(raw);
+                String freshness = resolveFreshnessBucket(ctx, raw);
                 String scope = SemanticCacheContextBuilder.cacheScope(tenant, freshness);
                 byte[] material = SemanticCacheContextBuilder.embeddingMaterial(raw, tenant, freshness);
                 float[] query = EmbeddingUtil.unitEmbeddingFromPayload(material, repository.embeddingDimensions());
@@ -63,5 +69,18 @@ public class SemanticCachePlugin implements Plugin {
             }
             next.run();
         };
+    }
+
+    private static String resolveFreshnessBucket(com.lumebridge.pipeline.RequestContext ctx, byte[] raw) {
+        String qi = ctx.getMetadata().get(SentinelConstants.META_QUERY_INTENT);
+        if (qi != null && !qi.isBlank()) {
+            try {
+                QueryIntent intent = QueryIntent.valueOf(qi.trim());
+                return SemanticCacheContextBuilder.freshnessBucketForIntent(intent);
+            } catch (IllegalArgumentException ignored) {
+                // fall through to heuristic bucket
+            }
+        }
+        return SemanticCacheContextBuilder.freshnessBucket(raw);
     }
 }

@@ -19,6 +19,7 @@ class DualModeRouterPluginTest {
         r.middleware().apply(ctx, () -> { });
         assertEquals(SentinelConstants.ROUTE_MCP, ctx.getRoute());
         assertEquals(SentinelConstants.ROUTE_MCP, ctx.getMetadata().get(SentinelConstants.META_ROUTE));
+        assertEquals(SentinelConstants.ROUTE_MCP, ctx.getMetadata().get(SentinelConstants.META_PROTOCOL_ROUTE));
     }
 
     @Test
@@ -28,6 +29,7 @@ class DualModeRouterPluginTest {
         RequestContext ctx = new RequestContext("{\"hello\":1}".getBytes(StandardCharsets.UTF_8));
         r.middleware().apply(ctx, () -> { });
         assertEquals(SentinelConstants.ROUTE_REST, ctx.getRoute());
+        assertEquals(SentinelConstants.ROUTE_REST, ctx.getMetadata().get(SentinelConstants.META_PROTOCOL_ROUTE));
     }
 
     @Test
@@ -38,5 +40,6 @@ class DualModeRouterPluginTest {
         ctx.putRequestHeader(SentinelConstants.HEADER_MCP_PROTOCOL_VERSION, "2024-11-05");
         r.middleware().apply(ctx, () -> { });
         assertEquals(SentinelConstants.ROUTE_MCP, ctx.getRoute());
+        assertEquals(SentinelConstants.ROUTE_MCP, ctx.getMetadata().get(SentinelConstants.META_PROTOCOL_ROUTE));
     }
 }

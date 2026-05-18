@@ -130,6 +130,8 @@ public final class SentinelConstants {
     public static final String JSON_FIELD_JSONRPC = "jsonrpc";
     public static final String JSON_JSONRPC_VERSION = "2.0";
     public static final String JSON_FIELD_CACHE_BYPASS = "cache_bypass";
+    /** Optional override for {@link com.lumebridge.intent.QueryIntent} (uppercase enum name). */
+    public static final String JSON_FIELD_QUERY_INTENT = "query_intent";
 
     public static final String HEADER_MCP_PROTOCOL_VERSION = "MCP-Protocol-Version";
     public static final String HEADER_CONTENT_TYPE = "Content-Type";
@@ -152,6 +154,12 @@ public final class SentinelConstants {
     public static final String INTENT_MUST_EXECUTE = "must_execute";
 
     public static final String META_ROUTE = "route";
+    /** {@link com.lumebridge.intent.QueryIntent} name when {@code intent-classifier} runs (P1). */
+    public static final String META_QUERY_INTENT = "query_intent";
+    /** REST vs MCP transport set by {@link com.lumebridge.plugin.DualModeRouterPlugin}. */
+    public static final String META_PROTOCOL_ROUTE = "protocol_route";
+    /** Model tier chosen by {@link com.lumebridge.plugin.IntelligentRouterPlugin}. */
+    public static final String META_MODEL_ROUTE = "model_route";
     public static final String META_INTENT = "intent";
     public static final String META_INTENT_CACHE_ELIGIBLE = "intent_cache_eligible";
     public static final String META_SEMANTIC_CACHE_HIT = "semantic_cache_hit";
@@ -186,6 +194,9 @@ public final class SentinelConstants {
     public static final String JSON_KEY_TOTAL_PROCESSED = "total_processed";
     public static final String JSON_KEY_WARNINGS = "warnings";
     public static final String JSON_KEY_ROUTE = "route";
+    public static final String JSON_KEY_PROTOCOL_ROUTE = "protocol_route";
+    public static final String JSON_KEY_MODEL_ROUTE = "model_route";
+    public static final String JSON_KEY_QUERY_INTENT = "query_intent";
     public static final String JSON_KEY_INTENT = "intent";
     public static final String JSON_KEY_CACHE_ELIGIBLE = "cache_eligible";
     public static final String JSON_KEY_SEMANTIC_CACHE = "semantic_cache";

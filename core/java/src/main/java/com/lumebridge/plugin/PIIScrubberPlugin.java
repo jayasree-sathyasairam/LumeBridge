@@ -6,11 +6,6 @@ import com.lumebridge.pipeline.Plugin;
 import com.lumebridge.pipeline.Stage;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -28,7 +23,11 @@ public class PIIScrubberPlugin implements Plugin {
     private static final Pattern EMAIL = Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
     private static final Pattern PHONE = Pattern.compile("\\b(?:\\+?\\d{1,3}[- ]?)?\\(?\\d{3}\\)?[- ]?\\d{3}[- ]?\\d{4}\\b");
     private static final Pattern SSN = Pattern.compile("\\b\\d{3}-\\d{2}-\\d{4}\\b");
-    private static final Pattern CREDIT = Pattern.compile("\\b(?:\\d{4}[-\\s]?){3}\\d{4}\\b");
+    /**
+     * Requires a separator between 4-digit groups so long numeric IDs / nonces (16+ contiguous digits)
+     * are not mistaken for PANs — avoids corrupting JSON bodies before downstream parsers run.
+     */
+    private static final Pattern CREDIT = Pattern.compile("\\b(?:\\d{4}[-\\s]){3}\\d{4}\\b");
     private static final Pattern IP_ADDR = Pattern.compile("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b");
     private static final Pattern AUTH_TOKEN = Pattern.compile("(?i)\\b(?:bearer\\s+)?[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*\\b");
     private static final Pattern API_KEY = Pattern.compile("(?i)\\b(?:ak|sk|aws|stripe|secret|key|token)[_-][a-z0-9]{16,}\\b");

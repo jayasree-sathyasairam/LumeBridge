@@ -12,6 +12,8 @@ import encoding from "k6/encoding";
  *   TEST_TYPE           AI | API — filters scenarios by test_type / any
  *   STRESS_MODE         fixtures (default) | legacy — legacy = original inline random mix
  *   K6_P95_MS           Latency threshold for http_req_duration p(95), milliseconds (default 1500). Set e.g. 1000 for strict SLO enforcement.
+ *
+ * Fixtures may include expect_body_json (shallow equality on parsed POST /task JSON body when HTTP 200).
  */
 
 const errorRate = new Rate("errors");
@@ -110,32 +112,64 @@ function recordPiiFromBody(res) {
   }
 }
 
+/**
+ * Shallow match on parsed JSON body (P1 intelligence fields: query_intent, cache_eligible, route, model_route, protocol_route).
+ */
+function bodyJsonMatches(rawBody, expected) {
+  if (!expected || typeof expected !== "object") return true;
+  let obj;
+  try {
+    obj = JSON.parse(rawBody);
+  } catch (_) {
+    return false;
+  }
+  for (const [key, want] of Object.entries(expected)) {
+    if (obj[key] !== want) return false;
+  }
+  return true;
+}
+
 function assertScenario(res, sc) {
   const id = sc.id || "unknown";
 
+  let statusOk = false;
+
   if (sc.expected_http_status !== undefined) {
-    return check(res, {
+    statusOk = check(res, {
       [`${id} status ${sc.expected_http_status}`]: (r) => r.status === sc.expected_http_status,
     });
-  }
-  if (sc.expected_http_status_in && sc.expected_http_status_in.length) {
+  } else if (sc.expected_http_status_in && sc.expected_http_status_in.length) {
     const allowed = sc.expected_http_status_in;
-    return check(res, {
+    statusOk = check(res, {
       [`${id} status in ${allowed.join(",")}`]: (r) => allowed.includes(r.status),
     });
-  }
-  if (
+  } else if (
     sc.expectation_mode === "future_gap" ||
     sc.expectation_mode === "policy_dependent" ||
     sc.expectation_mode === "expect_warning"
   ) {
-    return check(res, {
+    statusOk = check(res, {
       [`${id} any HTTP completed`]: (r) => r.status >= 100 && r.status <= 599,
     });
+  } else {
+    statusOk = check(res, {
+      [`${id} default 200`]: (r) => r.status === 200,
+    });
   }
-  return check(res, {
-    [`${id} default 200`]: (r) => r.status === 200,
-  });
+
+  if (!statusOk) return false;
+
+  if (
+    sc.expect_body_json &&
+    typeof sc.expect_body_json === "object" &&
+    res.status === 200
+  ) {
+    return check(res, {
+      [`${id} JSON expectations`]: (r) => bodyJsonMatches(r.body, sc.expect_body_json),
+    });
+  }
+
+  return true;
 }
 
 function runLegacyScenario(vu, iter) {
@@ -234,7 +268,20 @@ export default function () {
     else if (sc.expected_http_status === 409 || sc.expected_http_status_in?.includes(409)) {
       if (res.status === 409) collisionDetected.add(1);
     }
-    console.error(`Fixture ${sc.id}: assertion failed, status=${res.status} | ${String(res.body).slice(0, 400)}`);
+    let detail = String(res.body).slice(0, 400);
+    if (sc.expect_body_json && res.status === 200) {
+      try {
+        const got = JSON.parse(res.body);
+        const snap = {};
+        for (const k of Object.keys(sc.expect_body_json)) {
+          snap[k] = got[k];
+        }
+        detail += ` | expect_body_json mismatch snapshot: ${JSON.stringify(snap)} want=${JSON.stringify(sc.expect_body_json)}`;
+      } catch (_) {
+        detail += " | response body not JSON";
+      }
+    }
+    console.error(`Fixture ${sc.id}: assertion failed, status=${res.status} | ${detail}`);
   }
 
   if (res.status === 200) recordPiiFromBody(res);

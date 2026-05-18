@@ -24,6 +24,7 @@ public class DualModeRouterPlugin implements Plugin {
         return (ctx, next) -> {
             String route = detectRoute(ctx);
             ctx.setRoute(route);
+            ctx.getMetadata().put(SentinelConstants.META_PROTOCOL_ROUTE, route);
             ctx.getMetadata().put(SentinelConstants.META_ROUTE, route);
             next.run();
         };
