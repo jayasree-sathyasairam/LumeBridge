@@ -310,7 +310,9 @@ Select a profile based on your use case:
 | **ai-minimal** | Secure Core AI | `api-minimal` + Intelligent Model Router |
 | **api-pro** | **Production API** | `api-minimal` + Quota, Normalizer, Nonce Ordering, Collision Detection, Smart Retry, Circuit Breaker, Lock Metrics, Exporter, Cleaner |
 | **ai-pro** | **Production AI** | `ai-minimal` + Intent Classifier, Semantic Cache, Safety Guardrails, PII Scrubbing, Response Evaluator, Token Meter, Smart Retry, Circuit Breaker |
-| **hybrid** | **Full Gateway** | **All 25+ plugins** (Pro API + Pro AI + DLQ + Telemetry) |
+| **hybrid** | **Full stack** | **`api-pro`** + **`ai-minimal`** + AI plugins (`intent-classifier`, **`semantic-cache`**, safety, **PII**, evaluator, **`token-meter`**) + **`dlq`** + **`telemetry`** — see **[deployment-profiles-and-plugins.md](deployment-profiles-and-plugins.md)** |
+
+Full plugin blurbs & legacy profiles (**`lightweight`**, **`standard`**, **`ai`**): **[deployment-profiles-and-plugins.md](deployment-profiles-and-plugins.md)**.
 
 Run with a profile:
 

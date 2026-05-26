@@ -219,7 +219,7 @@ Pre-configured plugin combinations for common use cases:
 
 ![LumeBridge Master Flow](/Users/ramkiranbalaji/.gemini/antigravity/brain/b1b5c777-cd26-400c-99d9-34beb7b7f438/sentinel_nexus_master_flow_infographic_1778257925276.png)
 
-> See [adr/003-why-modular-monolith.md](adr/003-why-modular-monolith.md) for full profile strategy and [concepts.md](concepts.md) for per-plugin details.
+> See [adr/003-why-modular-monolith.md](adr/003-why-modular-monolith.md) for full profile strategy; **[deployment-profiles-and-plugins.md](deployment-profiles-and-plugins.md)** maps each **`PROFILE`** to plugin IDs with short explanations; [concepts.md](concepts.md) goes deeper per pattern.
 
 ## Deployment Topology
 
@@ -245,6 +245,7 @@ The gateway runs on port 8080. Dashed lines indicate connections used only when 
 - [ADR-005: Model Routing Strategy](docs/adr/005-model-routing-strategy.md)
 - [ADR-006: Multi-Format Payload Canonicalization](adr/006-multi-format-payload-canonicalization.md) — MessagePack & Protobuf hashing
 - [lld.md](lld.md) -- Detailed plugin internal logic
+- [deployment-profiles-and-plugins.md](deployment-profiles-and-plugins.md) -- Profile → plugin matrix and per-plugin blurbs (operators)
 - [concepts.md](concepts.md) -- Every pattern/concept used in the project and why it matters
 - [api-spec.md](api-spec.md) -- REST API and MCP/JSON-RPC endpoint specifications
 - [experience-bridge.md](experience-bridge.md) -- Mapping iPaaS/Channels experience to LumeBridge concepts and core technical concepts
